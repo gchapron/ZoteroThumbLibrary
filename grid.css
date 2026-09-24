@@ -1,0 +1,23 @@
+#ziv-toggle { margin: 0 6px; min-height: 26px; padding: 3px 9px; border: 1px solid var(--fill-quinary, #ccc); border-radius: 5px; color: inherit; background: var(--material-background, transparent); font: inherit; cursor: pointer; }
+#ziv-toggle[aria-pressed="true"] { background: #326cae; color: white; border-color: #326cae; }
+#ziv-root { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--material-background, #f6f7f9); color: var(--fill-primary, #222); font: 13px system-ui, sans-serif; z-index: 1; }
+#ziv-root[hidden] { display: none !important; }
+.ziv-header { display: flex; gap: 10px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--fill-quinary, #ddd); flex-shrink: 0; }
+#ziv-count { flex: 1; font-weight: 600; }
+.ziv-header label { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+.ziv-header input { width: 70px; }
+#ziv-viewport { flex: 1; min-height: 0; overflow: auto; position: relative; outline: none; overscroll-behavior: contain; overflow-anchor: none; scrollbar-gutter: stable; }
+#ziv-cards { position: relative; overflow-anchor: none; }
+.ziv-card { box-sizing: border-box; position: absolute; left: 0; top: 0; display: flex; flex-direction: column; padding: 8px; border: 2px solid transparent; border-radius: 9px; background: transparent; color: inherit; text-align: center; font: inherit; cursor: default; outline: none; transform-origin: top left; contain: layout style; }
+.ziv-card:hover { background: var(--fill-quinary, #e7eaf0); }
+.ziv-card[aria-selected="true"] { background: rgba(50,108,174,.15); border-color: #397ac4; }
+.ziv-card:focus-visible { outline: 2px solid #397ac4; outline-offset: 2px; }
+.ziv-preview { display: flex; align-items: center; justify-content: center; min-height: 0; width: 100%; flex: 1; margin-bottom: 8px; }
+.ziv-preview img { max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 2px 7px #0003; background: white; border-radius: 2px; }
+.ziv-placeholder { width: 70%; height: 82%; border: 1px solid var(--fill-quaternary, #ccc); border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--fill-secondary, #667); background: var(--material-sidepane, #eceef2); font-size: 24px; }
+.ziv-placeholder small { font-size: 11px; padding: 0 4px; }
+.ziv-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 17px; height: 34px; flex-shrink: 0; font-weight: 550; overflow-wrap: anywhere; }
+.ziv-meta { display: block; font-size: 11px; line-height: 17px; height: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .68; flex-shrink: 0; }
+.ziv-empty { padding: 64px 24px; text-align: center; opacity: .65; }
+.ziv-help { padding: 6px 12px; text-align: center; font-size: 10px; opacity: .65; border-top: 1px solid var(--fill-quinary, #ddd); }
+@media (prefers-color-scheme: dark) { #ziv-root { background: var(--material-background, #242529); color: var(--fill-primary, #eee); } .ziv-placeholder { background: #303238; color: #bbb; border-color: #555; } }
