@@ -52,6 +52,30 @@ installBackgroundFrameScheduler(window);
 
 let activeLoadingTask = null;
 let activeRenderTask = null;
+let activeRangeTransport = null;
+let renderGeneration = 0;
+let pdfWorker = null;
+
+function getPDFWorker() {
+  if (!pdfWorker || pdfWorker.destroyed) {
+    pdfWorker = new pdfjsLib.PDFWorker({ verbosity: 0 });
+  }
+  return pdfWorker;
+}
+
+function destroyPDFWorker(worker = pdfWorker) {
+  if (pdfWorker === worker) pdfWorker = null;
+  try { worker?.destroy(); } catch (_) {}
+}
+
+function cancelRendering() {
+  renderGeneration++;
+  activeRangeTransport?.abort();
+  try { activeRenderTask?.cancel(); } catch (_) {}
+  try { activeLoadingTask?.destroy().catch(() => {}); } catch (_) {}
+  destroyPDFWorker();
+}
+window.addEventListener("unload", cancelRendering, { once: true });
 
 function canvasFor(width, height) {
   const canvas = document.createElement("canvas");
@@ -60,49 +84,106 @@ function canvasFor(width, height) {
   return canvas;
 }
 
-async function renderPDF(bytes, maxWidth, maxHeight) {
+const PDF_RANGE_CHUNK_SIZE = 64 * 1024;
+const PDF_SMALL_FILE_LIMIT = 512 * 1024;
+const supportsLocalPDFRange = typeof IOUtils !== "undefined"
+  && typeof IOUtils.read === "function" && typeof pdfjsLib.PDFDataRangeTransport === "function";
+
+async function localPDFSource(path, size, onError) {
+  if (typeof path !== "string" || !Number.isSafeInteger(size) || size <= 0 || size > 256 * 1024 * 1024) {
+    throw new Error("Invalid local PDF source");
+  }
+  // Several tiny range requests cost more than one read for ordinary short
+  // articles. Reserve demand loading for files large enough to benefit from it.
+  const initialLength = size <= PDF_SMALL_FILE_LIMIT ? size : PDF_RANGE_CHUNK_SIZE;
+  const initialData = await IOUtils.read(path, { maxBytes: initialLength });
+  if (initialData.length !== initialLength) throw new Error("PDF file changed while reading");
+  if (initialData.length === size) return { data: initialData };
+  const range = new class extends pdfjsLib.PDFDataRangeTransport {
+    constructor() { super(size, initialData, true); this.aborted = false; }
+    requestDataRange(begin, end) {
+      if (this.aborted) return;
+      if (!Number.isSafeInteger(begin) || !Number.isSafeInteger(end) || begin < 0 || end <= begin || end > size) {
+        onError(new Error("Invalid PDF byte range"));
+        return;
+      }
+      IOUtils.read(path, { offset: begin, maxBytes: end - begin }).then(bytes => {
+        if (this.aborted) return;
+        if (bytes.length !== end - begin) throw new Error("PDF file changed while reading");
+        this.onDataRange(begin, bytes);
+      }).catch(error => { if (!this.aborted) onError(error); });
+    }
+    abort() { this.aborted = true; }
+  }();
+  // Without both switches PDF.js eagerly fetches the rest of the book even
+  // though a thumbnail only needs page one. Damaged PDFs can still request more.
+  return { range, rangeChunkSize: PDF_RANGE_CHUNK_SIZE, disableStream: true, disableAutoFetch: true };
+}
+
+async function renderPDF({ bytes, path, size }, maxWidth, maxHeight) {
   let canvas;
-  let pdf;
-  const task = pdfjsLib.getDocument({
-    data: bytes,
-    cMapUrl: PDF_ROOT + "web/cmaps/",
-    cMapPacked: true,
-    standardFontDataUrl: PDF_ROOT + "web/standard_fonts/",
-    wasmUrl: PDF_ROOT + "web/wasm/",
-    iccUrl: PDF_ROOT + "web/iccs/",
-    // Previews never execute PDF actions, scripting, or external requests.
-    isEvalSupported: false,
-    enableXfa: false,
-    useWorkerFetch: false,
-    stopAtErrors: false,
-    verbosity: 0,
-    maxImageSize: 32 * 1024 * 1024
-  });
-  activeLoadingTask = task;
+  let task;
+  let rejectRead;
+  const generation = renderGeneration;
+  const readFailure = new Promise((_, reject) => { rejectRead = reject; });
+  const source = supportsLocalPDFRange && path ? await localPDFSource(path, size, rejectRead) : { data: bytes };
+  if (generation !== renderGeneration) {
+    source.range?.abort();
+    throw new Error("Thumbnail render cancelled");
+  }
+  activeRangeTransport = source.range || null;
+  const worker = getPDFWorker();
   try {
-    // Password-protected files produce a placeholder without asking for a password.
-    pdf = await task.promise;
-    const page = await pdf.getPage(1);
-    const original = page.getViewport({ scale: 1 });
-    const scale = Math.min(maxWidth / original.width, maxHeight / original.height);
-    const viewport = page.getViewport({ scale });
-    canvas = canvasFor(viewport.width, viewport.height);
-    activeRenderTask = page.render({
-      canvasContext: canvas.getContext("2d", { alpha: false }),
-      viewport,
-      background: "rgb(255,255,255)",
-      annotationMode: pdfjsLib.AnnotationMode.DISABLE
+    task = pdfjsLib.getDocument({
+      ...source,
+      // Each renderer handles one document at a time. Retain its worker between
+      // jobs, avoiding worker startup and PDF.js initialization for every card.
+      worker,
+      cMapUrl: PDF_ROOT + "web/cmaps/",
+      cMapPacked: true,
+      standardFontDataUrl: PDF_ROOT + "web/standard_fonts/",
+      wasmUrl: PDF_ROOT + "web/wasm/",
+      iccUrl: PDF_ROOT + "web/iccs/",
+      // Previews never execute PDF actions, scripting, or external requests.
+      isEvalSupported: false,
+      enableXfa: false,
+      useWorkerFetch: false,
+      stopAtErrors: false,
+      verbosity: 0,
+      maxImageSize: 32 * 1024 * 1024
     });
-    await activeRenderTask.promise;
-    return { src: canvas.toDataURL("image/png"), width: canvas.width, height: canvas.height };
+    activeLoadingTask = task;
+    return await Promise.race([readFailure, (async () => {
+      // Password-protected files produce a placeholder without asking for a password.
+      const pdf = await task.promise;
+      const page = await pdf.getPage(1);
+      const original = page.getViewport({ scale: 1 });
+      const scale = Math.min(maxWidth / original.width, maxHeight / original.height);
+      const viewport = page.getViewport({ scale });
+      canvas = canvasFor(viewport.width, viewport.height);
+      activeRenderTask = page.render({
+        canvasContext: canvas.getContext("2d", { alpha: false }),
+        viewport,
+        background: "rgb(255,255,255)",
+        annotationMode: pdfjsLib.AnnotationMode.DISABLE
+      });
+      await activeRenderTask.promise;
+      return { src: canvas.toDataURL("image/png"), width: canvas.width, height: canvas.height };
+    })()]);
   }
   finally {
+    source.range?.abort();
+    if (activeRangeTransport === source.range) activeRangeTransport = null;
     activeRenderTask = null;
     if (activeLoadingTask === task) activeLoadingTask = null;
     if (canvas) canvas.width = canvas.height = 0;
-    // Destroy the whole document/worker so processing a library cannot retain PDFs.
-    try { await task.destroy(); }
-    catch (_) { /* A watchdog may have already torn down this document. */ }
+    // An explicitly supplied PDFWorker is not owned by the loading task. This
+    // releases PDF bytes, pages, fonts, and canvases while keeping the worker warm.
+    try { await task?.destroy(); }
+    catch (_) {
+      // Never reuse a worker whose document resources could not be released.
+      destroyPDFWorker(worker);
+    }
   }
 }
 
@@ -130,14 +211,12 @@ async function renderImage(bytes, mime, maxWidth, maxHeight) {
 }
 
 window.LibraryThumbnailRenderer = {
-  async render({ bytes, mime, maxWidth = 360, maxHeight = 480 }) {
-    if (mime === "application/pdf") return renderPDF(bytes, maxWidth, maxHeight);
+  supportsLocalPDFRange,
+  async render({ bytes, path, size, mime, maxWidth = 360, maxHeight = 480 }) {
+    if (mime === "application/pdf") return renderPDF({ bytes, path, size }, maxWidth, maxHeight);
     if (mime.startsWith("image/")) return renderImage(bytes, mime, maxWidth, maxHeight);
     return null;
   },
-  cancel() {
-    try { activeRenderTask?.cancel(); } catch (_) {}
-    try { activeLoadingTask?.destroy().catch(() => {}); } catch (_) {}
-  }
+  cancel: cancelRendering
 };
 window.dispatchEvent(new Event("library-thumbnail-renderer-ready"));

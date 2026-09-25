@@ -1,0 +1,307 @@
+{
+  "baseline": {
+    "passed": true,
+    "testedAt": "2026-09-25T08:40:59.112Z",
+    "zoteroVersion": "10.0.4",
+    "pluginVersion": "0.1.8",
+    "mode": "headless Zotero actual DOM and PDF.js; isolated synthetic library",
+    "fixtureMeta": {
+      "count": 480,
+      "bytes": 76125498,
+      "minBytes": 157545,
+      "maxBytes": 160019,
+      "largeBytes": 76979038
+    },
+    "benchmark": [
+      {
+        "requestedConcurrency": 1,
+        "count": 96,
+        "ms": 2394,
+        "images": 96,
+        "renders": 96,
+        "diskReads": 96,
+        "getCalls": 96,
+        "peakConcurrentRenders": 1,
+        "activeRenders": 0,
+        "sourceIO": {
+          "readCalls": 96,
+          "bytes": 15225477,
+          "available": true
+        },
+        "largePDF": {
+          "ms": 53,
+          "image": true,
+          "totalFileBytes": 76979038,
+          "sourceIO": {
+            "readCalls": 1,
+            "bytes": 76979038,
+            "available": true
+          }
+        }
+      },
+      {
+        "requestedConcurrency": 3,
+        "count": 96,
+        "ms": 2324,
+        "images": 96,
+        "renders": 96,
+        "diskReads": 96,
+        "getCalls": 96,
+        "peakConcurrentRenders": 1,
+        "activeRenders": 0,
+        "sourceIO": {
+          "readCalls": 96,
+          "bytes": 15225477,
+          "available": true
+        },
+        "largePDF": {
+          "ms": 89,
+          "image": true,
+          "totalFileBytes": 76979038,
+          "sourceIO": {
+            "readCalls": 1,
+            "bytes": 76979038,
+            "available": true
+          }
+        }
+      }
+    ],
+    "grid": {
+      "farScroll": {
+        "ms": 14786,
+        "steps": 197,
+        "seenItems": 480,
+        "mountedCards": 8,
+        "detachedCards": 48,
+        "created": 474,
+        "loads": 474,
+        "decodeCalls": 474,
+        "statusInitial": 91,
+        "statusAfterScroll": 91,
+        "nativeEvents": {
+          "sizeAvailable": 1,
+          "frameUpdate": 1,
+          "frameComplete": 1,
+          "hasTransparency": 1,
+          "decodeComplete": 1,
+          "loadComplete": 1
+        }
+      },
+      "pressure": {
+        "ms": 244,
+        "status": 91,
+        "nativeEvents": {
+          "sizeAvailable": 1,
+          "frameUpdate": 1,
+          "frameComplete": 1,
+          "hasTransparency": 1,
+          "decodeComplete": 1,
+          "loadComplete": 1,
+          "discard": 2
+        }
+      },
+      "returnToTop": {
+        "sameCard": false,
+        "sameImage": false,
+        "hasImage": true,
+        "imageComplete": true,
+        "naturalWidth": 360,
+        "src": "file:///private/tmp/ziv-previe",
+        "ms": 138,
+        "created": 8,
+        "loads": 8,
+        "decodeCalls": 0,
+        "renders": 0,
+        "diskReads": 0,
+        "getCalls": 8,
+        "sourceIO": {
+          "readCalls": 0,
+          "bytes": 0,
+          "available": true
+        },
+        "nativeEvents": {
+          "sizeAvailable": 1,
+          "frameUpdate": 2,
+          "frameComplete": 1,
+          "hasTransparency": 1,
+          "decodeComplete": 1,
+          "loadComplete": 1,
+          "discard": 2
+        }
+      },
+      "observerError": null,
+      "afterDestroy": {
+        "releasedRequests": 0,
+        "previouslyPinned": 0
+      }
+    }
+  },
+  "final": {
+    "passed": true,
+    "testedAt": "2026-09-25T08:43:59.311Z",
+    "zoteroVersion": "10.0.4",
+    "pluginVersion": "0.1.9",
+    "mode": "headless Zotero actual DOM and PDF.js; isolated synthetic library",
+    "fixtureMeta": {
+      "count": 480,
+      "bytes": 76125498,
+      "minBytes": 157545,
+      "maxBytes": 160019,
+      "largeBytes": 76979038
+    },
+    "benchmark": [
+      {
+        "requestedConcurrency": 1,
+        "count": 96,
+        "ms": 2358,
+        "images": 96,
+        "renders": 96,
+        "diskReads": 96,
+        "getCalls": 96,
+        "peakConcurrentRenders": 1,
+        "activeRenders": 0,
+        "sourceIO": {
+          "readCalls": 96,
+          "bytes": 15225477,
+          "available": true
+        },
+        "largePDF": {
+          "ms": 21,
+          "image": true,
+          "totalFileBytes": 76979038,
+          "sourceIO": {
+            "readCalls": 97,
+            "bytes": 6331230,
+            "available": true
+          }
+        }
+      },
+      {
+        "requestedConcurrency": 3,
+        "count": 96,
+        "ms": 2004,
+        "images": 96,
+        "renders": 96,
+        "diskReads": 96,
+        "getCalls": 96,
+        "peakConcurrentRenders": 3,
+        "activeRenders": 0,
+        "sourceIO": {
+          "readCalls": 96,
+          "bytes": 15225477,
+          "available": true
+        },
+        "largePDF": {
+          "ms": 19,
+          "image": true,
+          "totalFileBytes": 76979038,
+          "sourceIO": {
+            "readCalls": 97,
+            "bytes": 6331230,
+            "available": true
+          }
+        }
+      }
+    ],
+    "grid": {
+      "farScroll": {
+        "ms": 14994,
+        "steps": 197,
+        "seenItems": 480,
+        "mountedCards": 8,
+        "detachedCards": 48,
+        "previewImages": 480,
+        "lockedPreviewImages": 480,
+        "lockedPreviewBytes": 322099200,
+        "created": 477,
+        "loads": 477,
+        "decodeCalls": 477,
+        "statusInitial": 91,
+        "statusAfterScroll": 91,
+        "nativeEvents": {
+          "sizeAvailable": 1,
+          "frameUpdate": 1,
+          "frameComplete": 1,
+          "hasTransparency": 1,
+          "decodeComplete": 1,
+          "loadComplete": 1
+        }
+      },
+      "pressure": {
+        "ms": 427,
+        "status": 91,
+        "nativeEvents": {
+          "sizeAvailable": 1,
+          "frameUpdate": 1,
+          "frameComplete": 1,
+          "hasTransparency": 1,
+          "decodeComplete": 1,
+          "loadComplete": 1
+        }
+      },
+      "returnToTop": {
+        "sameCard": false,
+        "sameImage": true,
+        "hasImage": true,
+        "imageComplete": true,
+        "naturalWidth": 360,
+        "src": "file:///private/tmp/ziv-previe",
+        "initialPixels": {
+          "checksum": 2689513280,
+          "ms": 3.94,
+          "width": 360,
+          "height": 466
+        },
+        "returnedPixels": {
+          "checksum": 2689513280,
+          "ms": 6.13,
+          "width": 360,
+          "height": 466
+        },
+        "identicalPixels": true,
+        "ms": 135,
+        "created": 0,
+        "loads": 0,
+        "decodeCalls": 0,
+        "renders": 0,
+        "diskReads": 0,
+        "getCalls": 8,
+        "sourceIO": {
+          "readCalls": 0,
+          "bytes": 0,
+          "available": true
+        },
+        "nativeEvents": {
+          "sizeAvailable": 1,
+          "frameUpdate": 1,
+          "frameComplete": 1,
+          "hasTransparency": 1,
+          "decodeComplete": 1,
+          "loadComplete": 1
+        }
+      },
+      "observerError": null,
+      "afterDestroy": {
+        "previewImages": 0,
+        "lockedPreviewImages": 0,
+        "lockedPreviewBytes": 0,
+        "releasedRequests": 480,
+        "previouslyPinned": 480
+      }
+    }
+  },
+  "testedPackage": {
+    "path": "dist/ZoteroThumbLibrary-0.1.9.xpi",
+    "bytes": 40076,
+    "sha256": "9e610df451bf448d55ca506ed202c29890a63913624bdd6316791b47b4127011"
+  },
+  "notes": [
+    "Both versions ran in the same disposable synthetic-only Zotero 10.0.4 profile using 480 unique five-page image/vector PDFs and a 97-page, 76.98 MB PDF.",
+    "Each benchmark started with an empty thumbnail directory. Requested concurrency 3 has no effect in the 0.1.8 baseline.",
+    "The baseline native observer confirmed decoded-surface discards under memory pressure and 8 new image loads on scrollback despite 0 thumbnail-engine reads/renders.",
+    "The final run reused the exact image node, produced pixel-identical canvas output after memory pressure, and had 0 new image loads, JS decode calls, native frame/decode events, or thumbnail-engine reads/renders on scrollback.",
+    "All 480 retained native image locks were released on controller destruction. The 480-preview working set fits within the 512 MiB decoded-pixel cap; this test does not claim that all 2000 maximum-size previews stay decoded simultaneously.",
+    "Times are single local synthetic runs, not broad benchmark estimates. Scroll traversal includes deliberate 25 ms readiness polling and is not used as a raw throughput metric.",
+    "Headless Zotero logs a software compositor framebuffer warning; the final run independently draws the retained image to canvas and verifies the complete pixel checksum."
+  ]
+}

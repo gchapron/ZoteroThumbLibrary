@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 1,
+  "passed": true,
+  "method": "Actual Zotero 10.0.4 macOS application launched headless with a fresh disposable /private/tmp profile/data directory; 220 distinct synthetic PDFs; baseline from git HEAD 0.1.6 versus built 0.1.7 XPI. No normal profile/library accessed. No Quick Look installed or invoked.",
+  "package": {
+    "filename": "ZoteroThumbLibrary-0.1.7.xpi",
+    "sha256": "8726d3584e5919c3b2bf6f11017258cbbbbce1f576a7f979c5c6a711daa9ec46"
+  },
+  "timingScope": "Single machine, tiny synthetic one-page PDFs; timing is not a guarantee for scanned or complex documents. Scroll timings include a 25ms readiness polling interval and geometry differs slightly after profile restart. Immediate return-to-top state and renderer/cache counters are measured before waiting.",
+  "baseline": {
+    "passed": true,
+    "testedAt": "2026-09-25T07:59:08.308Z",
+    "version": "10.0.4",
+    "pluginVersion": "0.1.6",
+    "mode": "headless Zotero with actual DOM/PDF.js renderer",
+    "fixture": "220 distinct tiny one-page synthetic PDFs with unique paths and bytes",
+    "profile": "/private/tmp/ziv-preview-runtime-bhs_vmpb/profile",
+    "data": "/private/tmp/ziv-preview-runtime-bhs_vmpb/data",
+    "benchmark": {
+      "count": 96,
+      "cold": {
+        "ms": 5450.2,
+        "images": 96,
+        "renders": 96,
+        "diskReads": 96,
+        "getCalls": 96
+      },
+      "memory": {
+        "ms": 6.3,
+        "images": 96,
+        "renders": 0,
+        "diskReads": 0,
+        "getCalls": 96
+      },
+      "disk": {
+        "ms": 25.7,
+        "images": 96,
+        "renders": 0,
+        "diskReads": 96,
+        "getCalls": 96
+      },
+      "cachedWhileRendering": {
+        "finishedBeforeRelease": false,
+        "waitedMS": 155,
+        "renders": 0,
+        "diskReads": 1,
+        "getCalls": 2
+      }
+    },
+    "grid": {
+      "initialDimensions": {
+        "width": 360,
+        "height": 466
+      },
+      "farScroll": {
+        "steps": 101,
+        "seenItems": 220,
+        "ms": 12355,
+        "mountedCards": 8,
+        "detachedCards": 48,
+        "engineEntries": 160
+      },
+      "returnToTop": {
+        "hasImage": false,
+        "decoded": false,
+        "sameCard": false,
+        "sameImage": false,
+        "ms": 30.8,
+        "renders": 0,
+        "diskReads": 8,
+        "getCalls": 8
+      }
+    },
+    "noQuickLookInstalled": true,
+    "sourceCommit": "02df2b277789713927cc3ad81df106d0bbb27f0c"
+  },
+  "current": {
+    "passed": true,
+    "testedAt": "2026-09-25T08:01:52.008Z",
+    "version": "10.0.4",
+    "pluginVersion": "0.1.7",
+    "mode": "headless Zotero with actual DOM/PDF.js renderer",
+    "fixture": "220 distinct tiny one-page synthetic PDFs with unique paths and bytes",
+    "profile": "/private/tmp/ziv-preview-runtime-bhs_vmpb/profile",
+    "data": "/private/tmp/ziv-preview-runtime-bhs_vmpb/data",
+    "benchmark": {
+      "count": 96,
+      "cold": {
+        "ms": 326.5,
+        "images": 96,
+        "renders": 96,
+        "diskReads": 96,
+        "getCalls": 96
+      },
+      "memory": {
+        "ms": 4.3,
+        "images": 96,
+        "renders": 0,
+        "diskReads": 0,
+        "getCalls": 96
+      },
+      "disk": {
+        "ms": 19.5,
+        "images": 96,
+        "renders": 0,
+        "diskReads": 96,
+        "getCalls": 96
+      },
+      "cachedWhileRendering": {
+        "finishedBeforeRelease": true,
+        "waitedMS": 153,
+        "renders": 0,
+        "diskReads": 2,
+        "getCalls": 2
+      }
+    },
+    "grid": {
+      "initialDimensions": {
+        "width": 360,
+        "height": 466
+      },
+      "farScroll": {
+        "steps": 90,
+        "seenItems": 220,
+        "ms": 2568,
+        "mountedCards": 8,
+        "detachedCards": 48,
+        "engineEntries": 160
+      },
+      "returnToTop": {
+        "hasImage": true,
+        "decoded": true,
+        "fileURL": true,
+        "versionedURL": true,
+        "sameCard": false,
+        "sameImage": false,
+        "ms": 31.3,
+        "renders": 0,
+        "diskReads": 0,
+        "getCalls": 8
+      }
+    },
+    "noQuickLookInstalled": true
+  },
+  "testApplication": {
+    "status": "cleanly-exited",
+    "exitCode": 0
+  },
+  "restartAndRevalidation": {
+    "passed": true,
+    "testedAt": "2026-09-25T08:04:33.547Z",
+    "version": "10.0.4",
+    "pluginVersion": "0.1.7",
+    "restart": {
+      "images": 220,
+      "ms": 64.5,
+      "renders": 0,
+      "rendererCreated": false
+    },
+    "sourceChanged": {
+      "renders": 1,
+      "changedURI": true
+    },
+    "missingCache": {
+      "renders": 1,
+      "recovered": true
+    },
+    "fileURIImage": {
+      "width": 360,
+      "height": 466
+    },
+    "quickLookInvoked": false
+  },
+  "cacheSetup": "The dedicated benchmark cache was deleted at each cold run. The normal disposable-profile thumbnail cache was also deleted before each baseline/current grid traversal; pre-existing fixture records and the profile were reused. No personal cache was accessed.",
+  "headlessNote": "Actual main-window DOM and decoded image dimensions were inspected. No screenshot-based visual review was performed; the headless app logged a framebuffer warning while DOM/PDF/image checks passed."
+}

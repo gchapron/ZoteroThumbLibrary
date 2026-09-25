@@ -7,6 +7,16 @@ var LibraryIconView = class {
     this.items = [];
     this.cards = new Map();
     this.detachedCards = new Map();
+    // Cards are virtualized independently of their image requests. Keeping the
+    // same <img> avoids starting a new file load every time a card is recreated.
+    this.previewImages = new Map();
+    this.previewLoads = new Map();
+    this.previewSourceBytes = 0;
+    this.maxPreviewImages = 2000;
+    this.maxPreviewSourceBytes = 12 * 1024 * 1024;
+    this.lockedPreviewImages = new Map();
+    this.lockedPreviewBytes = 0;
+    this.maxLockedPreviewBytes = 512 * 1024 * 1024;
     this.previewEpoch = 0;
     this.renderFrame = null;
     this.pendingAnchor = null;
@@ -69,7 +79,10 @@ var LibraryIconView = class {
       if (type === "item") {
         // Metadata and last-read changes do not change a PDF's first page.
         // File changes are detected by the renderer's source fingerprint.
-        if (event === "delete") for (let id of ids || []) this.engine.invalidate(id);
+        if (event === "delete") for (let id of ids || []) {
+          this.engine.invalidate(id);
+          this.invalidatePreview(id);
+        }
         if (ids?.length && ids.every(id => Zotero.Items.get(id)?.isAnnotation?.())) return;
       }
       this.scheduleRefresh(true);
@@ -274,7 +287,12 @@ var LibraryIconView = class {
     }
     this.empty?.remove(); this.empty = null;
     let wanted = new Set(this.items.slice(layout.start, layout.end).map(item => item.id));
-    this.engine.setVisibleItems(wanted);
+    let priorityItems = new Set();
+    for (let i = layout.start; i < layout.end; i++) {
+      let top = layout.padding + Math.floor(i / layout.columns) * layout.rowHeight;
+      if (top + layout.rowHeight > scrollTop && top < scrollTop + height) priorityItems.add(this.items[i].id);
+    }
+    this.engine.setVisibleItems(wanted, { priorityItems });
     for (let [id, card] of this.cards) {
       if (!wanted.has(id)) { this.retireCard(card); this.cards.delete(id); }
     }
@@ -289,6 +307,8 @@ var LibraryIconView = class {
         this.canvas.append(card);
       }
       if (card._previewEpoch !== this.previewEpoch) this.updateCard(card, item);
+      let retained = this.previewImages.get(item.id);
+      if (retained) this.touchPreview(item.id, retained);
       if (!card._previewReady && !card._previewPending) previewRequests.push({ card, item, index: i });
       let x = layout.left + (i % layout.columns) * (layout.cellWidth + layout.gap);
       let y = layout.padding + Math.floor(i / layout.columns) * layout.rowHeight;
@@ -306,7 +326,7 @@ var LibraryIconView = class {
     // Queue the pages the user can see before the two overscan rows above/below.
     let previewPriority = request => {
       let top = layout.padding + Math.floor(request.index / layout.columns) * layout.rowHeight;
-      if (top + layout.rowHeight > scrollTop && top < scrollTop + height) return 0;
+      if (priorityItems.has(request.item.id)) return 0;
       return Math.min(Math.abs(top + layout.rowHeight - scrollTop), Math.abs(top - scrollTop - height)) + 1;
     };
     previewRequests.sort((a, b) => previewPriority(a) - previewPriority(b));
@@ -343,7 +363,7 @@ var LibraryIconView = class {
     card.remove();
     this.detachedCards.delete(card._itemID);
     this.detachedCards.set(card._itemID, card);
-    // Reuse recently decoded thumbnails when reversing scroll direction.
+    // Keep card metadata/listeners bounded; image requests have their own cache.
     while (this.detachedCards.size > 48) this.detachedCards.delete(this.detachedCards.keys().next().value);
   }
 
@@ -391,31 +411,151 @@ var LibraryIconView = class {
   loadThumbnail(card, item) {
     let token = card._previewToken = (card._previewToken || 0) + 1;
     card._previewPending = true;
+    // Restore the exact loaded image node before any asynchronous validation.
+    // Recreating an <img> with a cached file URL still starts an image request.
+    if (!card._preview.querySelector("img")) {
+      let retained = this.previewImages.get(item.id);
+      if (retained) {
+        this.touchPreview(item.id, retained);
+        card._preview.replaceChildren(retained.image);
+      }
+      else {
+        let cached = this.engine.peek(item);
+        if (cached?.src) this.prepareThumbnail(item.id, cached).then(img => {
+          if (!this.dead && token === card._previewToken && card.isConnected
+            && !card._previewReady && !card._preview.querySelector("img")) card._preview.replaceChildren(img);
+        }).catch(() => {});
+      }
+    }
     this.engine.get(item, { visibleOnly: true }).then(async result => {
       if (this.dead || token !== card._previewToken || !card.isConnected) return;
       if (result?.src) {
         let oldImage = card._preview.querySelector("img");
         if (oldImage?.getAttribute("src") !== result.src) {
-          let img = this.el("img", { src: result.src, alt: "", draggable: "false", decoding: "async", width: result.width, height: result.height });
-          try { await img.decode(); } catch (_) {}
+          let img = await this.prepareThumbnail(item.id, result);
           if (this.dead || token !== card._previewToken || !card.isConnected) return;
           card._preview.replaceChildren(img);
         }
+        else this.rememberPreview(item.id, oldImage, result);
       }
       else {
+        this.forgetPreview(item.id);
         card._placeholder.lastChild.textContent = "No local preview";
         card._preview.replaceChildren(card._placeholder);
       }
       card._previewReady = true;
     }).catch(error => {
       if (this.dead || token !== card._previewToken) return;
-      card._placeholder.lastChild.textContent = "Preview unavailable";
-      card._preview.replaceChildren(card._placeholder);
+      if (!card._preview.querySelector("img")) {
+        card._placeholder.lastChild.textContent = "Preview unavailable";
+        card._preview.replaceChildren(card._placeholder);
+      }
       card._previewReady = true;
       Zotero.debug(`Library Icon View preview: ${error.message}`);
     }).finally(() => {
       if (token === card._previewToken) card._previewPending = false;
     });
+  }
+
+  thumbnailImage(result) {
+    return this.el("img", { src: result.src, alt: "", draggable: "false", decoding: "async",
+      width: result.width, height: result.height });
+  }
+
+  prepareThumbnail(id, result) {
+    let retained = this.previewImages.get(id);
+    if (retained?.src === result.src) {
+      this.touchPreview(id, retained);
+      return Promise.resolve(retained.image);
+    }
+    let loading = this.previewLoads.get(id);
+    if (loading?.src === result.src) return loading.promise;
+    let image = this.thumbnailImage(result);
+    loading = { src: result.src };
+    this.previewLoads.set(id, loading);
+    loading.promise = image.decode().then(() => {
+      // Decoding may finish after its card scrolls away. Retain that completed
+      // image, while preventing an older source from replacing a newer request.
+      if (!this.dead && this.previewLoads.get(id) === loading) this.rememberPreview(id, image, result);
+      return image;
+    }).finally(() => {
+      if (this.previewLoads.get(id) === loading) this.previewLoads.delete(id);
+    });
+    return loading.promise;
+  }
+
+  rememberPreview(id, image, result) {
+    let retained = this.previewImages.get(id);
+    if (retained?.image === image) {
+      this.touchPreview(id, retained);
+      return;
+    }
+    this.forgetPreview(id, false);
+    let sourceBytes = result.src.length * 2;
+    if (sourceBytes > this.maxPreviewSourceBytes) return;
+    retained = { image, src: result.src, attachmentID: result.attachmentID,
+      sourceBytes, decodedBytes: Number(result.width) * Number(result.height) * 4 };
+    this.previewImages.set(id, retained);
+    this.previewSourceBytes += sourceBytes;
+    this.touchPreview(id, retained);
+    while (this.previewImages.size > this.maxPreviewImages || this.previewSourceBytes > this.maxPreviewSourceBytes) {
+      this.forgetPreview(this.previewImages.keys().next().value);
+    }
+  }
+
+  touchPreview(id, retained) {
+    this.previewImages.delete(id);
+    this.previewImages.set(id, retained);
+    if (this.lockedPreviewImages.has(id)) {
+      this.lockedPreviewImages.delete(id);
+      this.lockedPreviewImages.set(id, retained);
+      return;
+    }
+    // Pin a bounded working set of decoded surfaces. The remaining image
+    // requests stay reusable, but Gecko may discard their pixels under pressure.
+    if (!Number.isFinite(retained.decodedBytes) || retained.decodedBytes <= 0
+      || retained.decodedBytes > this.maxLockedPreviewBytes) return;
+    try {
+      let iface = Components.interfaces.nsIImageLoadingContent;
+      let content = typeof retained.image.getRequest === "function"
+        ? retained.image : retained.image.QueryInterface(iface);
+      let request = content.getRequest(iface.CURRENT_REQUEST);
+      if (!request || typeof request.lockImage !== "function") return;
+      while (this.lockedPreviewBytes + retained.decodedBytes > this.maxLockedPreviewBytes) {
+        this.unlockPreview(this.lockedPreviewImages.keys().next().value);
+      }
+      request.lockImage();
+      retained.lockRequest = request;
+      this.lockedPreviewImages.set(id, retained);
+      this.lockedPreviewBytes += retained.decodedBytes;
+    }
+    catch (_) { /* Older Gecko builds can still reuse the loaded image node. */ }
+  }
+
+  unlockPreview(id) {
+    let retained = this.lockedPreviewImages.get(id);
+    if (!retained) return;
+    this.lockedPreviewImages.delete(id);
+    this.lockedPreviewBytes -= retained.decodedBytes;
+    try { retained.lockRequest.unlockImage(); } catch (_) {}
+    retained.lockRequest = null;
+  }
+
+  forgetPreview(id, cancelLoad = true) {
+    if (cancelLoad) this.previewLoads.delete(id);
+    let retained = this.previewImages.get(id);
+    if (!retained) return;
+    this.unlockPreview(id);
+    this.previewSourceBytes -= retained.sourceBytes;
+    this.previewImages.delete(id);
+  }
+
+  invalidatePreview(id) {
+    id = Number(id);
+    this.previewLoads.delete(id);
+    for (let [itemID, retained] of this.previewImages) {
+      if (itemID === id || retained.attachmentID === id) this.forgetPreview(itemID);
+    }
   }
 
   async select(id, event) {
@@ -643,5 +783,7 @@ var LibraryIconView = class {
     for (let card of [...this.cards.values(), ...this.detachedCards.values()]) card._motion?.cancel();
     this.cards.clear();
     this.detachedCards.clear();
+    for (let id of this.previewImages.keys()) this.forgetPreview(id);
+    this.previewLoads.clear();
   }
 };

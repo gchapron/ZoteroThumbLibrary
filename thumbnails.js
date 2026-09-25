@@ -9,7 +9,7 @@ var LibraryThumbnails = class LibraryThumbnails {
    * No attachment, annotation, database, or file is modified by this renderer.
    */
   constructor({ Zotero, window, rendererURL, maxEntries = 160, maxCacheBytes = 12 * 1024 * 1024,
-    diskCache = true, maxDiskEntries = 1000, maxDiskBytes = 128 * 1024 * 1024 }) {
+    diskCache = true, maxDiskEntries = 2000, maxDiskBytes = Infinity, maxConcurrentRenders = 3 }) {
     this.Zotero = Zotero;
     this.window = window;
     this.rendererURL = rendererURL || "chrome://library-icon-view/content/thumbnail-renderer.html";
@@ -18,14 +18,23 @@ var LibraryThumbnails = class LibraryThumbnails {
     this._cache = new Map();
     this._cacheBytes = 0;
     this._pending = new Map();
+    // Only compact file references survive memory-cache eviction. Never retain
+    // the full image strings or decoded cards for every item in a large library.
+    this._ready = new Map();
+    this._diskQueue = [];
+    this._diskRunning = 0;
     this._queue = [];
     this._visibleItems = new Set();
-    this._running = false;
+    this._priorityItems = new Set();
     this._destroyed = false;
     this._generation = 0;
-    this._browser = null;
-    this._rendererPromise = null;
-    this._abortActive = null;
+    this.maxConcurrentRenders = Number.isFinite(maxConcurrentRenders)
+      ? Math.max(1, Math.min(8, Math.floor(maxConcurrentRenders))) : 3;
+    // Each lane owns a document and PDF worker. A renderer document has mutable
+    // PDF.js state and must never be used by two jobs at once.
+    this._renderers = Array.from({ length: this.maxConcurrentRenders }, () => ({
+      browser: null, promise: null, abortActive: null, cancelLoad: null, job: null
+    }));
     this._epubCover = typeof LibraryEPUBCover === "undefined" ? null
       : new LibraryEPUBCover({ Zotero, window });
     this._diskDirectory = diskCache && Zotero.Profile?.dir && Zotero.Utilities?.Internal?.md5
@@ -35,8 +44,16 @@ var LibraryThumbnails = class LibraryThumbnails {
     this._diskReady = null;
     this._diskDisabled = false;
     this._diskWrites = 0;
+    this._diskWriteSequence = 0;
     this._diskNonce = Date.now().toString(36) + Math.random().toString(36).slice(2);
     this._maxPNGBytes = 2 * 1024 * 1024;
+  }
+
+  /** A display hint for scroll-back; get() still validates the source file. */
+  peek(item) {
+    if (this._destroyed || !item) return undefined;
+    const ready = this._ready.get(item.id);
+    return ready?.diskResult || this._cache.get(ready?.key)?.result;
   }
 
   async get(item, { visibleOnly = false } = {}) {
@@ -51,41 +68,84 @@ var LibraryThumbnails = class LibraryThumbnails {
         if (!item.isRegularItem?.()) return null;
         item = await item.getBestAttachment();
       }
-      if (!item || !eligible()) return null;
+      if (!item || !eligible()) {
+        if (eligible()) this._ready.delete(requestedItemID);
+        return null;
+      }
       const mime = item.attachmentContentType || "";
-      if (mime !== "application/pdf" && mime !== "application/epub+zip" && !mime.startsWith("image/")) return null;
+      if (mime !== "application/pdf" && mime !== "application/epub+zip" && !mime.startsWith("image/")) {
+        this._ready.delete(requestedItemID);
+        return null;
+      }
       const path = await item.getFilePathAsync();
-      if (!path || !eligible()) return null;
+      if (!path || !eligible()) {
+        if (eligible()) this._ready.delete(requestedItemID);
+        return null;
+      }
       const stat = await IOUtils.stat(path);
       if (!eligible()) return null;
       // Avoid reading arbitrarily large attachments into memory just for a preview.
-      if (!stat.size || stat.size > 256 * 1024 * 1024) return null;
+      if (!stat.size || stat.size > 256 * 1024 * 1024) {
+        this._ready.delete(requestedItemID);
+        return null;
+      }
       const key = `${item.id}|${path}|${stat.size}|${stat.lastModified}`;
+      const ready = this._ready.get(requestedItemID);
+      if (ready && ready.key !== key) this._ready.delete(requestedItemID);
+      const diskResult = ready?.key === key ? ready.diskResult : this._cache.get(key)?.result;
+      if (diskResult?.src.startsWith("file:")) {
+        // A user or disk-cleanup utility may have removed the PNG. Recover it
+        // without making every scroll-back read/checksum/base64-encode the file.
+        let diskStat;
+        try { diskStat = await IOUtils.stat(this._diskPath(key)); } catch (_) {}
+        if (!eligible()) return null;
+        if (diskStat?.size === diskResult.cacheSize && diskStat?.lastModified === diskResult.cacheModified) {
+          if ((Number.isFinite(this.maxDiskEntries) || Number.isFinite(this.maxDiskBytes))
+            && Date.now() - diskStat.lastModified > 3600000) {
+            try {
+              await IOUtils.setModificationTime(this._diskPath(key));
+              diskResult.cacheModified = (await IOUtils.stat(this._diskPath(key))).lastModified;
+            } catch (_) {}
+            if (!eligible()) return null;
+          }
+          this._rememberReady({ key, requestedItemID, attachmentID: item.id }, diskResult);
+          return diskResult;
+        }
+        this._forget(key);
+      }
       if (this._cache.has(key)) {
         const value = this._cache.get(key);
         this._cache.delete(key);
         this._cache.set(key, value);
+        this._rememberReady({ key, requestedItemID, attachmentID: item.id }, value.result);
         return value.result;
       }
-      // Visible-only jobs can be removed by scrolling; unrestricted requests must
-      // not share that cancellation, nor should two parent cards share visibility.
-      const pendingKey = key + (visibleOnly ? `|visible:${requestedItemID}` : "|unrestricted");
-      if (this._pending.has(pendingKey)) {
-        const result = await this._pending.get(pendingKey);
-        return eligible() ? result : null;
-      }
+      // Share the attachment work across parents and unrestricted/visible calls,
+      // but track each consumer separately so one disappearing card cannot cancel
+      // a different card's request or start a duplicate render in another lane.
+      let job = this._pending.get(key);
       // The UI should request only visible cards. This cap also protects other callers.
-      if (this._queue.length >= 160) return null;
+      if (!job && this._queue.length + this._diskQueue.length >= 160) return null;
       let resolve;
       const promise = new Promise(done => { resolve = done; });
-      this._pending.set(pendingKey, promise);
-      this._queue.push({ key, pendingKey, requestedItemID, visibleOnly,
-        attachmentID: item.id, path, mime, generation, resolve, promise });
-      this._pump();
+      const consumer = { requestedItemID, visibleOnly, resolve };
+      if (job) {
+        job.consumers.push(consumer);
+        this._prioritizeQueues();
+      }
+      else {
+        job = { key, attachmentID: item.id, path, mime, sourceSize: stat.size,
+          generation, consumers: [consumer] };
+        this._pending.set(key, job);
+        this._diskQueue.push(job);
+        this._prioritizeQueues();
+        this._pumpDisk();
+      }
       const result = await promise;
       return eligible() ? result : null;
     }
     catch (error) {
+      if (eligible()) this._ready.delete(requestedItemID);
       this._log(error);
       return null;
     }
@@ -96,70 +156,134 @@ var LibraryThumbnails = class LibraryThumbnails {
       && (!visibleOnly || this._visibleItems.has(requestedItemID));
   }
 
-  /** Update the rendered card IDs (including overscan) before requesting previews. */
-  setVisibleItems(ids) {
-    this._visibleItems = new Set(ids);
-    const retained = [];
-    for (const job of this._queue) {
-      if (!job.visibleOnly || this._visibleItems.has(job.requestedItemID)) {
-        retained.push(job);
-      }
-      else {
-        if (this._pending.get(job.pendingKey) === job.promise) this._pending.delete(job.pendingKey);
-        job.resolve(null);
-      }
-    }
-    this._queue = retained;
+  _jobEligible(job) {
+    return job.consumers.some(consumer => this._eligible(job.generation,
+      consumer.requestedItemID, consumer.visibleOnly));
   }
 
-  async _pump() {
-    if (this._running || this._destroyed) return;
-    this._running = true;
-    try {
-      while (this._queue.length && !this._destroyed) {
-        const job = this._queue.shift();
+  /** Update the rendered card IDs (including overscan) before requesting previews. */
+  setVisibleItems(ids, { priorityItems = [] } = {}) {
+    this._visibleItems = new Set(ids);
+    this._priorityItems = new Set(priorityItems);
+    for (const name of ["_queue", "_diskQueue"]) {
+      this[name] = this[name].filter(job => {
+        job.consumers = job.consumers.filter(consumer => {
+          if (!consumer.visibleOnly || this._visibleItems.has(consumer.requestedItemID)) return true;
+          consumer.resolve(null);
+          return false;
+        });
+        if (job.consumers.length) return true;
+        this._finish(job, null);
+        return false;
+      });
+    }
+    this._prioritizeQueues();
+  }
+
+  _prioritizeQueues() {
+    const priority = job => Number(job.consumers.some(consumer =>
+      this._priorityItems.has(consumer.requestedItemID)));
+    for (const queue of [this._diskQueue, this._queue]) {
+      // Stable sorting preserves FIFO order within the viewport and overscan.
+      queue.sort((a, b) => priority(b) - priority(a));
+    }
+  }
+
+  _finish(job, result) {
+    if (job.finished) return;
+    job.finished = true;
+    if (this._pending.get(job.key) === job) this._pending.delete(job.key);
+    for (const consumer of job.consumers) {
+      if (result && this._eligible(job.generation, consumer.requestedItemID, false)) {
+        this._rememberReady({ ...job, requestedItemID: consumer.requestedItemID }, result);
+      }
+      consumer.resolve(result);
+    }
+  }
+
+  // Disk hits never wait behind PDF rendering. Bound concurrent reads so fast
+  // scrolling also remains inexpensive on a slow or network-backed profile.
+  _pumpDisk() {
+    while (this._diskRunning < 4 && this._diskQueue.length && !this._destroyed) {
+      const job = this._diskQueue.shift();
+      this._diskRunning++;
+      (async () => {
+        let result = null;
+        let transferred = false;
+        try {
+          if (!this._jobEligible(job)) return;
+          result = this._cache.has(job.key) ? this._cache.get(job.key).result : await this._readDisk(job);
+          if (!this._jobEligible(job)) { result = null; return; }
+          if (result) {
+            this._remember(job.key, result, job.attachmentID);
+          }
+          else {
+            transferred = true;
+            this._queue.push(job);
+            this._prioritizeQueues();
+            this._pump();
+            return;
+          }
+        }
+        catch (error) { this._log(error); }
+        finally {
+          // A cache miss transfers ownership to the renderer pool.
+          if (!transferred) this._finish(job, result);
+          this._diskRunning--;
+          this._pumpDisk();
+        }
+      })();
+    }
+  }
+
+  _pump() {
+    if (this._destroyed) return;
+    for (const lane of this._renderers) {
+      if (lane.job || !this._queue.length) continue;
+      const job = this._queue.shift();
+      lane.job = job;
+      (async () => {
         let result = null;
         try {
-          if (this._eligible(job.generation, job.requestedItemID, job.visibleOnly)) {
-            // Another queued request may already have cached this attachment.
-            // Recheck here before opening a PDF renderer or reading source bytes.
+          if (this._jobEligible(job)) {
             if (this._cache.has(job.key)) result = this._cache.get(job.key).result;
-            else result = await this._readDisk(job);
-            if (!this._eligible(job.generation, job.requestedItemID, job.visibleOnly)) result = null;
+            if (!this._jobEligible(job)) result = null;
             else {
               if (!result) {
-                result = await this._render(job);
-                if (result && this._eligible(job.generation, job.requestedItemID, job.visibleOnly)) {
-                  await this._writeDisk(job, result);
+                result = await this._render(job, lane);
+                if (result && this._eligible(job.generation, null, false)) {
+                  result = await this._writeDisk(job, result) || result;
                 }
               }
-              if (!this._eligible(job.generation, job.requestedItemID, job.visibleOnly)) result = null;
-              else if (result) this._remember(job.key, result, job.attachmentID);
+              if (!this._eligible(job.generation, null, false)) result = null;
+              else if (result) {
+                this._remember(job.key, result, job.attachmentID);
+              }
             }
           }
         }
         catch (error) {
           this._log(error);
-          if (this._eligible(job.generation, job.requestedItemID, job.visibleOnly)) {
+          if (this._jobEligible(job)) {
             this._remember(job.key, null, job.attachmentID);
           }
         }
         finally {
-          if (this._pending.get(job.pendingKey) === job.promise) this._pending.delete(job.pendingKey);
-          job.resolve(result);
+          this._finish(job, result);
+          lane.job = null;
+          this._pump();
         }
-      }
+      })();
     }
-    finally { this._running = false; }
   }
 
-  async _render(job) {
+  async _render(job, lane) {
     let timer;
     let stopped = false;
     const eligible = () => !stopped
-      && this._eligible(job.generation, job.requestedItemID, job.visibleOnly);
+      && this._eligible(job.generation, null, false);
     const watchdog = new Promise((_, reject) => {
-      this._abortActive = () => { stopped = true; reject(new Error("Thumbnail render cancelled")); };
+      lane.abortActive = () => { stopped = true; reject(new Error("Thumbnail render cancelled")); };
       timer = this.window.setTimeout(() => {
         stopped = true;
         reject(new Error("Thumbnail render timed out"));
@@ -177,17 +301,19 @@ var LibraryThumbnails = class LibraryThumbnails {
             if (!cover || !eligible()) return null;
             ({ bytes, mime } = cover);
           }
-          const rendererWindow = await this._getRenderer();
+          const rendererWindow = await this._getRenderer(lane);
           if (!eligible()) return null;
-          if (!bytes) bytes = await IOUtils.read(job.path);
+          const renderer = rendererWindow.wrappedJSObject.LibraryThumbnailRenderer;
+          const localPDF = mime === "application/pdf" && renderer.supportsLocalPDFRange === true;
+          if (!bytes && !localPDF) bytes = await IOUtils.read(job.path);
           if (!eligible()) return null;
           const options = Components.utils.cloneInto({
-            bytes,
+            ...(localPDF ? { path: job.path, size: job.sourceSize } : { bytes }),
             mime,
             maxWidth: 360,
             maxHeight: 480
           }, rendererWindow);
-          const result = await rendererWindow.wrappedJSObject.LibraryThumbnailRenderer.render(options);
+          const result = await renderer.render(options);
           if (!result || !eligible()) return null;
           // Copy primitives out of the renderer realm before destroying/replacing it.
           return {
@@ -200,21 +326,21 @@ var LibraryThumbnails = class LibraryThumbnails {
       ]);
     }
     catch (error) {
-      this._resetRenderer();
+      this._resetRenderer(lane);
       throw error;
     }
     finally {
       stopped = true;
       this.window.clearTimeout(timer);
-      this._abortActive = null;
+      lane.abortActive = null;
     }
   }
 
-  _getRenderer() {
-    if (this._rendererPromise) return this._rendererPromise;
-    this._rendererPromise = new Promise((resolve, reject) => {
+  _getRenderer(lane) {
+    if (lane.promise) return lane.promise;
+    lane.promise = new Promise((resolve, reject) => {
       const browser = this.window.document.createXULElement("browser");
-      this._browser = browser;
+      lane.browser = browser;
       browser.setAttribute("type", "content");
       browser.setAttribute("disableglobalhistory", "true");
       browser.setAttribute("aria-hidden", "true");
@@ -224,21 +350,26 @@ var LibraryThumbnails = class LibraryThumbnails {
         try {
           const win = browser.contentWindow;
           if (win?.wrappedJSObject?.LibraryThumbnailRenderer) {
-            browser.removeEventListener("load", onLoad, true);
+            cleanup();
             resolve(win);
           }
           else if (win?.location?.href === this.rendererURL && win.document.readyState === "complete") {
-            browser.removeEventListener("load", onLoad, true);
+            cleanup();
             reject(new Error("Zotero's bundled PDF renderer could not be loaded"));
           }
         }
-        catch (error) { reject(error); }
+        catch (error) { cleanup(); reject(error); }
       };
+      const cleanup = () => {
+        browser.removeEventListener("load", onLoad, true);
+        lane.cancelLoad = null;
+      };
+      lane.cancelLoad = () => { cleanup(); reject(new Error("Thumbnail render cancelled")); };
       browser.addEventListener("load", onLoad, true);
       browser.setAttribute("src", this.rendererURL);
       this.window.document.documentElement.appendChild(browser);
     });
-    return this._rendererPromise;
+    return lane.promise;
   }
 
   _diskPath(key) {
@@ -307,20 +438,36 @@ var LibraryThumbnails = class LibraryThumbnails {
     return "data:image/png;base64," + this.window.btoa(binary);
   }
 
+  _diskResult(job, dimensions, stat) {
+    const src = this.Zotero.File?.pathToFileURI?.(this._diskPath(job.key));
+    return src ? { src: src + "?v=" + stat.lastModified, width: dimensions.width, height: dimensions.height,
+      attachmentID: job.attachmentID, cacheSize: stat.size, cacheModified: stat.lastModified } : null;
+  }
+
+  _rememberReady(job, result) {
+    this._ready.set(job.requestedItemID, { key: job.key, attachmentID: job.attachmentID,
+      diskResult: result?.src.startsWith("file:") ? result : null });
+  }
+
   async _readDisk(job) {
     if (!(await this._ensureDisk())) return null;
     const path = this._diskPath(job.key);
     try {
-      const stat = await IOUtils.stat(path);
+      let stat = await IOUtils.stat(path);
       if (!stat.size || stat.size > this._maxPNGBytes) throw new Error("Invalid thumbnail cache size");
       const bytes = await IOUtils.read(path, { maxBytes: this._maxPNGBytes + 1 });
       const dimensions = this._pngDimensions(bytes);
       if (!dimensions) throw new Error("Invalid thumbnail cache PNG");
-      // Touch at most hourly; the filesystem timestamp is the on-disk LRU.
-      if (Date.now() - stat.lastModified > 3600000) {
-        IOUtils.setModificationTime(path).catch(() => {});
+      // Explicitly limited caches use filesystem timestamps as their disk LRU.
+      if ((Number.isFinite(this.maxDiskEntries) || Number.isFinite(this.maxDiskBytes))
+        && Date.now() - stat.lastModified > 3600000) {
+        try {
+          await IOUtils.setModificationTime(path);
+          stat = await IOUtils.stat(path);
+        } catch (_) {}
       }
-      return { src: this._pngDataURL(bytes), ...dimensions, attachmentID: job.attachmentID };
+      return this._diskResult(job, dimensions, stat)
+        || { src: this._pngDataURL(bytes), ...dimensions, attachmentID: job.attachmentID };
     }
     catch (error) {
       // Missing entries are normal. Removing a corrupt/oversized entry is safe,
@@ -340,9 +487,15 @@ var LibraryThumbnails = class LibraryThumbnails {
       const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
       if (!this._pngDimensions(bytes)) return;
       const path = this._diskPath(job.key);
-      await IOUtils.write(path, bytes, { tmpPath: path + "." + this._diskNonce + ".tmp", permissions: 0o600 });
+      // A collection change can cancel a consumer while its disk write is still
+      // settling. A new request for that key must get a distinct atomic temp file.
+      const nonce = this._diskNonce + (++this._diskWriteSequence).toString(36);
+      await IOUtils.write(path, bytes, { tmpPath: path + "." + nonce + ".tmp", permissions: 0o600 });
       this._diskWrites++;
-      this._scheduleDiskPrune();
+      // Prune in a deferred batch, keeping up to 2,000 previews by default.
+      // Coalesce writes so cleanup does not scan the library for every PNG.
+      if (Number.isFinite(this.maxDiskEntries) || Number.isFinite(this.maxDiskBytes)) this._scheduleDiskPrune();
+      return this._diskResult(job, result, await IOUtils.stat(path));
     }
     catch (error) {
       this._diskDisabled = true;
@@ -366,7 +519,9 @@ var LibraryThumbnails = class LibraryThumbnails {
 
   async _pruneDisk() {
     if (!this._diskDirectory || this._diskDisabled || this._destroyed) return;
-    const children = await IOUtils.getChildren(this._diskDirectory);
+    const limited = Number.isFinite(this.maxDiskEntries) || Number.isFinite(this.maxDiskBytes);
+    const children = (await IOUtils.getChildren(this._diskDirectory))
+      .filter(path => limited || path.endsWith(".tmp"));
     const files = [];
     // Limit concurrent disk operations and yield between batches so a large
     // pre-existing cache cannot monopolize the Zotero window's event loop.
@@ -390,11 +545,10 @@ var LibraryThumbnails = class LibraryThumbnails {
     }
     files.sort((a, b) => b.lastModified - a.lastModified);
     let bytes = 0, count = 0;
-    const cutoff = Date.now() - 30 * 24 * 3600000;
     for (let offset = 0; offset < files.length && !this._destroyed; offset += 16) {
       const remove = [];
       for (const file of files.slice(offset, offset + 16)) {
-        if (file.lastModified < cutoff || count >= this.maxDiskEntries || bytes + file.size > this.maxDiskBytes) {
+        if (count >= this.maxDiskEntries || bytes + file.size > this.maxDiskBytes) {
           remove.push(IOUtils.remove(file.path, { ignoreAbsent: true }).catch(() => {}));
         }
         else { count++; bytes += file.size; }
@@ -418,36 +572,47 @@ var LibraryThumbnails = class LibraryThumbnails {
     }
   }
 
+  _forget(key) {
+    const value = this._cache.get(key);
+    if (value) this._cacheBytes -= value.bytes;
+    this._cache.delete(key);
+    for (const [id, ready] of this._ready) {
+      if (ready.key === key) this._ready.delete(id);
+    }
+  }
+
   invalidate(itemID) {
     for (const [key, value] of this._cache) {
       if (value.attachmentID === Number(itemID)) {
-        this._cacheBytes -= value.bytes;
-        this._cache.delete(key);
+        this._forget(key);
       }
+    }
+    for (const [id, ready] of this._ready) {
+      if (id === Number(itemID) || ready.attachmentID === Number(itemID)) this._ready.delete(id);
     }
   }
 
   clearQueue() {
     this._generation++;
-    for (const job of this._queue.splice(0)) {
-      job.resolve(null);
-    }
-    this._pending.clear();
-    if (this._abortActive) this._abortActive();
+    this._queue.length = this._diskQueue.length = 0;
+    for (const job of this._pending.values()) this._finish(job, null);
+    for (const lane of this._renderers) lane.abortActive?.();
   }
 
   clear() {
     this.clearQueue();
     this._cache.clear();
     this._cacheBytes = 0;
+    this._ready.clear();
   }
 
-  _resetRenderer() {
-    try { this._browser?.contentWindow?.wrappedJSObject?.LibraryThumbnailRenderer?.cancel(); }
+  _resetRenderer(lane) {
+    lane.cancelLoad?.();
+    try { lane.browser?.contentWindow?.wrappedJSObject?.LibraryThumbnailRenderer?.cancel(); }
     catch (_) {}
-    this._browser?.remove();
-    this._browser = null;
-    this._rendererPromise = null;
+    lane.browser?.remove();
+    lane.browser = null;
+    lane.promise = null;
   }
 
   destroy() {
@@ -456,7 +621,7 @@ var LibraryThumbnails = class LibraryThumbnails {
     this.window.clearTimeout(this._pruneTimer);
     this._pruneTimer = null;
     this.clear();
-    this._resetRenderer();
+    for (const lane of this._renderers) this._resetRenderer(lane);
   }
 
   _log(error) {
