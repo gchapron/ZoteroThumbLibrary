@@ -4,14 +4,14 @@ A macOS Zotero plugin that replaces the library table with a scrollable grid of 
 
 ## Install
 
-This initial release targets **Zotero 9.0.x** and was developed and exercised with **Zotero 9.0.6 on macOS**.
+The current release targets **Zotero 9.0.x** and was developed and exercised with **Zotero 9.0.6 on macOS**.
 
-1. Download or use `dist/ZoteroThumbLibrary-0.1.4.xpi`.
+1. Open the [latest GitHub release](https://github.com/gchapron/ZoteroThumbLibrary/releases/latest) and download its **ZoteroThumbLibrary `.xpi` asset**. The source-code ZIP and TAR archives are for development and cannot be installed as plugins.
 2. In Zotero, choose **Tools → Plugins**.
 3. Open the gear menu, choose **Install Plugin From File…**, and select the XPI.
 4. Restart Zotero if prompted.
 
-No Python, Node, or developer setup is needed to install the packaged plugin. It can be disabled or removed from Zotero's Plugins window.
+No Python, Node, or developer setup is needed to install the packaged plugin. It can be disabled or removed from Zotero's Plugins window. To update, download and install the newer release's XPI the same way; your existing plugin settings are retained.
 
 ## Use
 
@@ -53,7 +53,7 @@ The complete plugin source is at the repository root. Build with Python 3 using 
 python3 scripts/build.py
 ```
 
-The script writes the reproducible XPI and SHA-256 checksum to `dist/`. It packages only the runtime files and license, with fixed ZIP timestamps and permissions.
+The script writes the reproducible XPI and `SHA256SUMS.txt` to `dist/`. This generated directory is ignored by Git; installers and checksums are distributed as GitHub Release assets. It packages only the runtime files and license, with fixed ZIP timestamps and permissions. From `dist/`, run `shasum -a 256 -c SHA256SUMS.txt` on macOS to check the package.
 
 Run the dependency-free tests with Node:
 
@@ -66,6 +66,15 @@ Tests cover large-library layout bounds, selection, attachment grouping, window 
 The tagging update includes 61 passing portable tests. Actual Zotero checks exercise card drag events through the native tag panel, multiple selection, Command-drop removal, numbered colored-tag toggling, range-selection anchoring, and the read-only shortcut guard.
 
 `tests/runtime-results.json` records actual Zotero verification using a disposable profile and synthetic files. Checks included a decoded **360 × 466** first-page PNG, native selection, collection filtering, search and empty states, view switching, disable/enable cleanup, main-window reopening, and a cold application restart. Runtime checks inspected live DOM and application state; no screenshot-based visual review was completed. A real library containing 100,000 PDFs was not loaded; large-library bounds were checked by the portable model tests.
+
+## Publish a release
+
+1. Set the intended version in `manifest.json`, update the README, and run the tests and build above.
+2. Verify the installer in a disposable Zotero profile and retain the results under `tests/`.
+3. Commit and push the source, then create a Git tag matching the manifest version (for example, `v0.1.4`) on that exact commit.
+4. Create a draft GitHub Release for the tag, add release notes, and attach the generated XPI and `SHA256SUMS.txt`. Verify the assets before publishing.
+
+The tag preserves the release source; its assets provide the installable package. Keep generated files out of commits.
 
 ## Development references
 

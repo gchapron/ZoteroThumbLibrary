@@ -5,3 +5,6 @@ __pycache__/
 *.tmp
 .idea/
 .vscode/
+
+# Reproducible installers are attached to GitHub Releases.
+/dist/

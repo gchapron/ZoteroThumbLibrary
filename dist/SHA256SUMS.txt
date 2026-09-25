@@ -1,1 +1,0 @@
-40e4ceb4c86e38cec8a876890fec6421dc7e7bb114be3128623b7ee77fe258a6  ZoteroThumbLibrary-0.1.4.xpi
