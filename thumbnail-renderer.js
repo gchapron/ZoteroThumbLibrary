@@ -113,7 +113,8 @@ async function renderImage(bytes, mime, maxWidth, maxHeight) {
     const image = new Image();
     image.src = url;
     await image.decode();
-    if (!image.naturalWidth || !image.naturalHeight) return null;
+    if (!image.naturalWidth || !image.naturalHeight
+      || image.naturalWidth * image.naturalHeight > 32 * 1024 * 1024) return null;
     const scale = Math.min(maxWidth / image.naturalWidth, maxHeight / image.naturalHeight, 1);
     canvas = canvasFor(image.naturalWidth * scale, image.naturalHeight * scale);
     const ctx = canvas.getContext("2d", { alpha: false });

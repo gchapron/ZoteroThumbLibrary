@@ -8,11 +8,11 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_FILES = (
     "bootstrap.js",
+    "epub-cover.js",
     "grid.css",
     "grid.js",
     "manifest.json",
     "model.js",
-    "native-thumbnails.js",
     "prefs.js",
     "thumbnail-renderer.html",
     "thumbnail-renderer.js",

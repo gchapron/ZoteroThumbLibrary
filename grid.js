@@ -1,8 +1,9 @@
 var LibraryIconView = class {
-  constructor(window, rootURI) {
+  constructor(window, rootURI, version = "0") {
     this.window = window;
     this.doc = window.document;
     this.rootURI = rootURI;
+    this.version = version;
     this.items = [];
     this.cards = new Map();
     this.detachedCards = new Map();
@@ -36,9 +37,11 @@ var LibraryIconView = class {
     this.originalVisibility = this.tree.style.visibility;
     this.originalAria = this.tree.getAttribute("aria-hidden");
     this.pane.style.position = "relative";
-    this.style = this.el("link", { rel: "stylesheet", href: this.rootURI + "grid.css" });
+    // Gecko retains stylesheet contents across add-on hot upgrades at the same
+    // XPI URL. A release-specific URL makes the new toolbar geometry immediate.
+    this.style = this.el("link", { rel: "stylesheet", href: this.rootURI + "grid.css?v=" + encodeURIComponent(this.version) });
     this.doc.documentElement.append(this.style);
-    this.button = this.el("button", { id: "ziv-toggle", title: "Switch between library icons and list", type: "button" }, "▦ Icons");
+    this.button = this.el("button", { id: "ziv-toggle", type: "button", "aria-controls": "ziv-root" });
     toolbar.insertBefore(this.button, toolbar.querySelector("spacer"));
     this.listen(this.button, "click", () => this.toggle());
     this.root = this.el("section", { id: "ziv-root", "aria-label": "Library icon view" });
@@ -53,7 +56,7 @@ var LibraryIconView = class {
     this.viewport = this.el("div", { id: "ziv-viewport", tabindex: "0", role: "listbox", "aria-label": "Library items", "aria-multiselectable": "true" });
     this.canvas = this.el("div", { id: "ziv-cards" });
     this.viewport.append(this.canvas);
-    this.root.append(header, this.viewport, this.el("div", { class: "ziv-help" }, "Double-click to open · ⌘-click to select several · Right-click for actions"));
+    this.root.append(header, this.viewport, this.el("div", { class: "ziv-help" }, "Double-click to open · Space for Quick Look · ⌘-click to select several"));
     this.pane.append(this.root);
     this.listen(this.viewport, "scroll", () => this.scheduleRender(), { passive: true });
     this.listen(this.viewport, "keydown", event => this.keydown(event));
@@ -166,7 +169,26 @@ var LibraryIconView = class {
     else if (this.originalAria === null) this.tree.removeAttribute("aria-hidden");
     else this.tree.setAttribute("aria-hidden", this.originalAria);
     this.button.setAttribute("aria-pressed", String(this.enabled));
-    this.button.textContent = this.enabled ? "☷ List" : "▦ Icons";
+    let label = this.enabled ? "Switch to list view" : "Switch to icon view";
+    this.button.setAttribute("aria-label", label);
+    this.button.title = label;
+    let svg = this.doc.createElementNS("http://www.w3.org/2000/svg", "svg");
+    for (let [name, value] of Object.entries({ viewBox: "0 0 20 20", width: 18, height: 18,
+      "aria-hidden": "true", focusable: "false", fill: "none", stroke: "currentColor",
+      "stroke-width": 1.4, "stroke-linecap": "round", "stroke-linejoin": "round" })) svg.setAttribute(name, value);
+    if (this.enabled) {
+      let path = this.doc.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("d", "M3 5h1M7 5h10M3 10h1M7 10h10M3 15h1M7 15h10");
+      svg.append(path);
+    }
+    else {
+      for (let [x, y] of [[3, 3], [11, 3], [3, 11], [11, 11]]) {
+        let rect = this.doc.createElementNS("http://www.w3.org/2000/svg", "rect");
+        for (let [name, value] of Object.entries({ x, y, width: 6, height: 6, rx: 1 })) rect.setAttribute(name, value);
+        svg.append(rect);
+      }
+    }
+    this.button.replaceChildren(svg);
   }
 
   refresh(force = false) {
@@ -405,7 +427,30 @@ var LibraryIconView = class {
     catch (error) { Zotero.logError(error); }
   }
 
+  forwardPreviewShortcut(event) {
+    // Zotero7QuickLook owns its native-tree listener and open/close state.
+    // Send it the same shortcut without moving focus or changing selection.
+    let space = (event.code === "Space" || event.key === " ") && !event.ctrlKey && !event.metaKey;
+    let commandY = event.key.toLowerCase() === "y" && event.metaKey && !event.ctrlKey && !event.altKey;
+    if ((!space && !commandY && event.key !== "Escape") || !this.tree
+      || !this.doc.getElementById("quicklook-menu-item")) return false;
+    if (event.repeat && event.key !== "Escape") {
+      event.preventDefault(); event.stopPropagation();
+      return true;
+    }
+    let forwarded = new this.window.KeyboardEvent("keydown", {
+      key: event.key, code: space ? "Space" : event.code, bubbles: true, cancelable: true,
+      altKey: event.altKey, shiftKey: event.shiftKey, ctrlKey: event.ctrlKey,
+      metaKey: event.metaKey, repeat: false
+    });
+    this.tree.dispatchEvent(forwarded);
+    if (!forwarded.defaultPrevented) return false;
+    event.preventDefault(); event.stopPropagation();
+    return true;
+  }
+
   keydown(event) {
+    if (this.forwardPreviewShortcut(event)) return;
     let ids = this.items.map(item => item.id);
     if (!ids.length) return;
     let index = ids.indexOf(this.focusID || this.view.getSelectedItems(true)[0]);

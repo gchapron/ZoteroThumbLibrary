@@ -9,7 +9,7 @@ const source = fs.readFileSync(path.join(__dirname, "../thumbnails.js"), "utf8")
 // This harness exercises queue/cache/lifecycle logic. PDF pixel rendering is
 // separately verified inside Zotero, which supplies Gecko and its PDF.js build.
 function fixture(t, options = {}) {
-  const state = { renders: 0, reads: 0, modified: 1, size: 200, hold: false, release: null };
+  const state = { renders: 0, reads: 0, modified: 1, size: 200, hold: false, release: null, renderOptions: null };
   const context = {
     IOUtils: {
       stat: async () => ({ size: state.size, lastModified: state.modified }),
@@ -17,13 +17,13 @@ function fixture(t, options = {}) {
     },
     Components: { utils: { cloneInto: value => value } }
   };
-  if (options.nativeRender) {
-    context.LibraryNativeThumbnails = class {
-      render(job) { return options.nativeRender(job); }
-      cancel() { options.nativeCancel?.(); }
-      destroy() { this.cancel(); }
+  if (options.epubExtract) {
+    context.LibraryEPUBCover = class {
+      extract(file, settings) { return options.epubExtract(file, settings); }
     };
   }
+  // A leftover native class must never be instantiated or called.
+  context.LibraryNativeThumbnails = class { constructor() { throw new Error("No native processes"); } };
   vm.createContext(context);
   vm.runInContext(source, context);
   const window = {
@@ -37,7 +37,8 @@ function fixture(t, options = {}) {
           removeEventListener(type) { listeners.delete(type); },
           loaded() { listeners.get("load")?.(); },
           contentWindow: { wrappedJSObject: { LibraryThumbnailRenderer: {
-            async render() {
+            async render(options) {
+              state.renderOptions = options;
               state.renders++;
               if (state.hold) await new Promise(resolve => { state.release = resolve; });
               return { src: "data:image/png;base64,abc", width: 12, height: 20 };
@@ -63,46 +64,58 @@ function fixture(t, options = {}) {
   return { engine, state, attachment };
 }
 
-test("native previews bypass PDF setup and source reads while preserving attachment metadata", async t => {
-  let calls = 0;
-  const { engine, state, attachment } = fixture(t, { nativeRender: async job => {
-    calls++;
-    assert.equal(job.path, "/tmp/thumbnail-test-1.pdf");
-    assert.equal(job.maxWidth, 360);
-    return { src: "data:image/png;base64,native", width: 360, height: 466 };
-  } });
+test("PDF previews use the in-process renderer on every platform", async t => {
+  const { engine, state, attachment } = fixture(t);
   const result = await engine.get(attachment());
   assert.equal(result.attachmentID, 1);
-  assert.equal(result.width, 360);
+  assert.equal(state.reads, 1);
+  assert.equal(state.renders, 1);
+  assert.equal(state.renderOptions.mime, "application/pdf");
+});
+
+test("EPUB cover bytes use the image renderer and normal attachment caching", async t => {
+  let extracted = 0;
+  const coverBytes = new Uint8Array([5, 6, 7]);
+  const { engine, state, attachment } = fixture(t, { epubExtract: async (file, { eligible }) => {
+    extracted++;
+    assert.equal(file, "/tmp/thumbnail-test-1.pdf");
+    assert.ok(eligible());
+    return { bytes: coverBytes, mime: "image/png" };
+  } });
+  const epub = { ...attachment(), attachmentContentType: "application/epub+zip" };
+  const result = await engine.get(epub);
+  assert.equal(result.attachmentID, 1);
+  assert.equal(state.reads, 0, "the whole EPUB must not be read into memory");
+  assert.equal(state.renderOptions.mime, "image/png");
+  assert.equal(state.renderOptions.bytes, coverBytes);
+  assert.equal((await engine.get(epub)).src, result.src);
+  assert.equal(extracted, 1);
+  state.modified++;
+  await engine.get(epub);
+  assert.equal(extracted, 2, "changed EPUB files invalidate the preview");
+});
+
+test("EPUBs with no cover stay placeholders without opening a renderer", async t => {
+  const { engine, state, attachment } = fixture(t, { epubExtract: async () => null });
+  assert.equal(await engine.get({ ...attachment(), attachmentContentType: "application/epub+zip" }), null);
   assert.equal(state.reads, 0);
   assert.equal(state.renders, 0);
   assert.equal(engine._browser, null);
-  assert.equal((await engine.get(attachment())).src, result.src);
-  assert.equal(calls, 1);
 });
 
-test("native unavailability and failures fall back to the bundled renderer", async t => {
-  for (const nativeRender of [async () => null, async () => { throw new Error("Native unavailable"); }]) {
-    const { engine, state, attachment } = fixture(t, { nativeRender });
-    const result = await engine.get(attachment());
-    assert.ok(result?.src);
-    assert.equal(state.renders, 1);
-  }
-});
-
-test("cancelling native work cannot start a stale fallback render", async t => {
-  let release;
-  let cancelCount = 0;
-  const { engine, state, attachment } = fixture(t, {
-    nativeRender: () => new Promise(resolve => { release = resolve; }),
-    nativeCancel: () => { cancelCount++; release?.(null); }
-  });
-  const pending = engine.get(attachment());
+test("cancelled EPUB extraction cannot start a stale image render", async t => {
+  let release, stillEligible;
+  const { engine, state, attachment } = fixture(t, { epubExtract: (file, { eligible }) => {
+    stillEligible = eligible;
+    return new Promise(resolve => { release = resolve; });
+  } });
+  const pending = engine.get({ ...attachment(), attachmentContentType: "application/epub+zip" });
   while (!release) await new Promise(resolve => setImmediate(resolve));
   engine.clearQueue();
   assert.equal(await pending, null);
+  assert.equal(stillEligible(), false);
+  release({ bytes: new Uint8Array([5]), mime: "image/png" });
   await new Promise(resolve => setImmediate(resolve));
-  assert.equal(cancelCount, 1);
   assert.equal(state.renders, 0);
   assert.equal(engine._browser, null);
 });

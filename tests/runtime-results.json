@@ -1,450 +1,634 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "environment": {
     "application": "Zotero",
     "version": "9.0.6",
     "platform": "macOS",
     "osVersion": "15.7.9",
     "isolation": "Dedicated disposable profile and data directory; synthetic fixtures only",
-    "wordProcessorAutomaticInstallersDisabled": true
+    "normalProfile": "Read only to identify and copy installed Quick Look extension; no normal-profile modifications"
   },
-  "fixtureNotes": {
-    "libraryPerformance": "96 synthetic parent records with linked attachments referencing the same three-page PDF; measures 96 previews, not 96 distinct PDFs.",
-    "nativePerformance": "10 newly created distinct source PDF files with unique paths and bytes; no prior Quick Look generation for these sources.",
-    "pdfContactSheet": "Synthetic 80-page PDF with mixed portrait and landscape pages.",
-    "timingScope": "Observed end-to-end timings on this test machine and these small synthetic PDFs; not a guarantee for arbitrary documents."
+  "artifact": {
+    "name": "ZoteroThumbLibrary-0.1.3.xpi",
+    "sha256": "a3c8f307b09597d7540567d5c4ed5cf0ceed52de3070763b4c2bbbd13bbed2dd"
   },
-  "libraryIconView": {
-    "artifact": "ZoteroThumbLibrary-0.1.2.xpi",
-    "sha256": "567bc29ac37816d80736436475167bc39253764334c332518cd74b552369d1b9",
-    "status": "passed",
-    "persistentCache": {
-      "profileRelativePath": "cache/zoteroThumbLibrary/v1",
-      "maxEntries": 1000,
-      "maxBytes": 134217728,
-      "maxAgeDays": 30
+  "status": "passed",
+  "checks": [
+    {
+      "id": "revision-final-library-013-install",
+      "status": "passed",
+      "testedAt": "2026-09-25T04:24:36.147Z",
+      "result": {
+        "id": "library-icon-view@local.zotero.plugins",
+        "name": "ZoteroThumbLibrary",
+        "version": "0.1.3",
+        "isActive": true
+      }
     },
-    "checks": [
-      {
-        "id": "library-native-hardened-install",
-        "status": "passed",
-        "testedAt": "2026-09-24T20:44:30.631Z",
-        "result": {
-          "id": "library-icon-view@local.zotero.plugins",
-          "name": "ZoteroThumbLibrary",
-          "version": "0.1.2",
-          "isActive": true
-        }
-      },
-      {
-        "id": "library-native-hardened-proof",
-        "status": "passed",
-        "testedAt": "2026-09-24T20:44:33.886Z",
-        "result": {
-          "native": {
-            "distinctSourceFiles": 10,
-            "totalMS": 922,
-            "perDocumentMS": [
-              85,
-              135,
-              77,
-              83,
-              109,
+    {
+      "id": "revision-final-library-013-hot-features",
+      "status": "passed",
+      "testedAt": "2026-09-25T04:24:41.085Z",
+      "result": {
+        "epub": [
+          {
+            "fixture": "epub3-cover",
+            "width": 300,
+            "height": 450,
+            "topPixel": [
+              25,
               110,
-              81,
-              77,
-              74,
-              73
+              170,
+              255
             ],
-            "calls": 10,
-            "successes": 10,
-            "pdfjsRendererCreated": false,
-            "dimensions": [
-              [
-                360,
-                467
-              ],
-              [
-                360,
-                467
-              ],
-              [
-                360,
-                467
-              ],
-              [
-                360,
-                467
-              ],
-              [
-                360,
-                467
-              ],
-              [
-                360,
-                467
-              ],
-              [
-                360,
-                467
-              ],
-              [
-                360,
-                467
-              ],
-              [
-                360,
-                467
-              ],
-              [
-                360,
-                467
-              ]
+            "bottomPixel": [
+              240,
+              180,
+              55,
+              255
             ]
           },
-          "warm": {
-            "totalMS": 22,
-            "renders": 0,
-            "images": 10
-          },
-          "pdfjs": {
-            "documents": 10,
-            "totalMS": 487,
-            "perDocumentMS": [
-              78,
-              47,
-              45,
-              45,
-              45,
-              46,
-              45,
-              46,
-              45,
-              45
+          {
+            "fixture": "epub2-cover",
+            "width": 300,
+            "height": 450,
+            "topPixel": [
+              25,
+              110,
+              170,
+              255
             ],
-            "displayIntent": true
+            "bottomPixel": [
+              240,
+              180,
+              55,
+              255
+            ]
           },
-          "nativeFailureFallback": {
-            "passed": true,
-            "totalMS": 74
+          {
+            "fixture": "guide-cover",
+            "width": 300,
+            "height": 450,
+            "topPixel": [
+              25,
+              110,
+              170,
+              255
+            ],
+            "bottomPixel": [
+              240,
+              180,
+              55,
+              255
+            ]
           },
-          "cancellation": {
-            "passed": true,
-            "totalMS": 24,
-            "remainingJobs": 0
+          {
+            "fixture": "svg-wrapper-cover",
+            "width": 300,
+            "height": 450,
+            "topPixel": [
+              25,
+              110,
+              170,
+              255
+            ],
+            "bottomPixel": [
+              240,
+              180,
+              55,
+              255
+            ]
           },
-          "passed": true
-        }
-      },
-      {
-        "id": "library-012-feature-regression",
-        "status": "passed",
-        "testedAt": "2026-09-24T20:43:16.764Z",
-        "result": {
-          "passed": true,
-          "version": "0.1.2",
-          "collectionFilter": true,
-          "nativeSelection": true,
-          "multipleSelection": true,
-          "childDeduplication": true,
-          "missingFilePlaceholder": true,
-          "quickSearch": true,
-          "emptyState": true,
-          "listToggle": true,
-          "disableCleanup": true,
-          "reEnable": true,
-          "visibleImage": {
-            "width": 360,
-            "height": 467
+          {
+            "fixture": "without-cover",
+            "placeholder": true
           }
+        ],
+        "pdf": {
+          "defaultRenderer": "PDF.js",
+          "nativeAdapterPresent": false,
+          "width": 360,
+          "height": 466,
+          "totalMS": 76
         },
-        "note": "Same final library source except subsequent stdin-close rejection handling; final native process path was separately re-tested."
-      },
-      {
-        "id": "library-012-scroll-zoom-stable",
-        "status": "passed",
-        "testedAt": "2026-09-24T20:44:35.129Z",
-        "result": {
-          "fixtureItems": 96,
-          "burstEvents": 60,
-          "immediateRenderCalls": 0,
-          "renderCallsAfterTwoFrames": 1,
-          "before": {
-            "size": 172,
-            "columns": 4,
-            "scrollTop": 3059,
-            "anchor": {
-              "id": 93,
-              "top": -47,
-              "bottom": 209,
-              "left": 274.5
-            }
-          },
-          "after": {
-            "size": 242,
-            "columns": 3,
-            "scrollTop": 4855,
-            "anchorStillMounted": true,
-            "anchorTop": -47,
-            "topDelta": 0
-          },
-          "frameCoalesced": true,
-          "anchorStable": true
-        }
-      },
-      {
-        "id": "library-012-gap-continuity",
-        "status": "passed",
-        "testedAt": "2026-09-24T20:43:18.862Z",
-        "result": {
-          "passed": true,
-          "frames": 24,
-          "maxAnchorShiftPixels": 0,
-          "existingImageRetained": true,
-          "metadataEditRenders": 0,
-          "mountedCards": 21,
-          "detachedCards": 29
+        "toolbar": {
+          "stylesheetVersion": "0.1.3",
+          "buttonWidth": 24,
+          "buttonHeight": 24,
+          "iconOnly": true,
+          "headerHeight": 32,
+          "accessible": true,
+          "labels": [
+            "Switch to list view",
+            "Switch to icon view"
+          ]
         },
-        "note": "Same final grid source; subsequent change only handled native subprocess stdin-close rejection."
+        "epubPersistentCache": true,
+        "passed": true
       }
-    ]
-  },
-  "finalColdRestart": {
-    "id": "final-012-cold-cache-and-continuous-pdf",
-    "status": "passed",
-    "testedAt": "2026-09-24T20:48:13.437Z",
-    "result": {
-      "passed": true,
-      "version": "9.0.6",
-      "library": {
-        "name": "ZoteroThumbLibrary",
-        "version": "0.1.2",
-        "isActive": true,
-        "imageWidth": 360,
-        "imageHeight": 466,
-        "persistentCache": {
-          "path": "cache/zoteroThumbLibrary/v1",
-          "images": 96,
+    },
+    {
+      "id": "revision-final-library-013-quicklook",
+      "status": "passed",
+      "testedAt": "2026-09-25T04:24:46.966Z",
+      "result": {
+        "passed": true,
+        "quickLookVersion": "1.0.8",
+        "selectedAttachmentOnly": true,
+        "spaceLaunches": 2,
+        "spaceTogglesClosed": true,
+        "escapeCloses": true,
+        "normalProfileUntouched": true
+      }
+    },
+    {
+      "id": "revision-final-cold-013-113",
+      "status": "passed",
+      "testedAt": "2026-09-25T04:25:08.532Z",
+      "result": {
+        "passed": true,
+        "library": {
+          "version": "0.1.3",
+          "active": true,
+          "persistentEPUBImages": 4,
           "renders": 0,
-          "totalMS": 59,
-          "rendererCreated": false
-        }
-      },
-      "pdf": {
-        "name": "ZoteroThumbPDF",
-        "version": "1.1.2",
-        "isActive": true,
-        "pages": 3,
-        "decodedImages": 3,
-        "fullWidth": true,
-        "continuousSlider": {
-          "step": "any",
-          "value": 237.25,
-          "cardWidth": 261.25,
-          "savedSize": 237,
-          "existingImageRetained": true
-        }
-      },
-      "wordProcessorAutoInstallersDisabled": true
+          "stylesheetURLHasVersion": true
+        },
+        "pdf": {
+          "version": "1.1.3",
+          "active": true,
+          "images": 3,
+          "headerHeight": 32,
+          "closeIconSize": 24,
+          "redundantHeading": false,
+          "continuousSize": 237.25
+        },
+        "wordProcessorAutoInstallersDisabled": true
+      }
     }
+  ],
+  "fixtureNotes": {
+    "covers": "Four synthetic EPUB covers: EPUB3 cover-image, EPUB2 cover metadata, XHTML guide wrapper, SVG image wrapper. All resolve an encoded-space raster path. Fifth EPUB deliberately has no cover.",
+    "previewDimensions": "300 by450 native raster dimensions; exact corner pixels and rendered image aspect ratio verify no introduced white padding.",
+    "quickLook": "Exact installed Zotero7QuickLook1.0.8 extension copied into disposable profile. Actual grid Space opens selected synthetic PDF in macOS Quick Look, second Space closes, Space reopens, Escape closes. No replacement preview implementation used.",
+    "PDFRendering": "Default cold engine with disk cache disabled uses Zotero bundled PDF.js, 76ms on synthetic3pagePDF; native subprocess adapter absent."
   },
   "testApplication": {
     "status": "cleanly-exited",
-    "testedAt": "2026-09-24T20:48:22.075Z",
     "exitCode": 0,
-    "scope": "Only the dedicated disposable-profile Zotero process was quit.",
-    "automaticWordProcessorInstallersSkipped": true
+    "testedAt": "2026-09-25T04:25:12.015Z",
+    "scope": "Only the disposable Zotero test process was closed."
   },
   "historical": {
-    "purpose": "Earlier version evidence and performance diagnosis retained separately from final-version checks.",
-    "library010": {
-      "artifact": "ZoteroThumbLibrary-0.1.0.xpi",
-      "sha256": "eec7294d9cfaa6009041dd0b5c3b7032ba986771de924edfa4b5bece9ac06bc8",
-      "status": "passed",
-      "checks": [
-        {
-          "id": "final-install-library-v2",
-          "status": "passed",
-          "testedAt": "2026-09-24T20:05:40.971Z",
-          "result": {
-            "id": "library-icon-view@local.zotero.plugins",
-            "name": "Library Icon View",
-            "version": "0.1.0",
-            "isActive": true
-          }
+    "previousReleaseEvidence": {
+      "schemaVersion": 2,
+      "environment": {
+        "application": "Zotero",
+        "version": "9.0.6",
+        "platform": "macOS",
+        "osVersion": "15.7.9",
+        "isolation": "Dedicated disposable profile and data directory; synthetic fixtures only",
+        "wordProcessorAutomaticInstallersDisabled": true
+      },
+      "fixtureNotes": {
+        "libraryPerformance": "96 synthetic parent records with linked attachments referencing the same three-page PDF; measures 96 previews, not 96 distinct PDFs.",
+        "nativePerformance": "10 newly created distinct source PDF files with unique paths and bytes; no prior Quick Look generation for these sources.",
+        "pdfContactSheet": "Synthetic 80-page PDF with mixed portrait and landscape pages.",
+        "timingScope": "Observed end-to-end timings on this test machine and these small synthetic PDFs; not a guarantee for arbitrary documents."
+      },
+      "libraryIconView": {
+        "artifact": "ZoteroThumbLibrary-0.1.2.xpi",
+        "sha256": "567bc29ac37816d80736436475167bc39253764334c332518cd74b552369d1b9",
+        "status": "passed",
+        "persistentCache": {
+          "profileRelativePath": "cache/zoteroThumbLibrary/v1",
+          "maxEntries": 1000,
+          "maxBytes": 134217728,
+          "maxAgeDays": 30
         },
-        {
-          "id": "final-library-window-reopen",
-          "status": "passed",
-          "testedAt": "2026-09-24T20:05:43.013Z",
-          "result": {
-            "reopenPassed": true,
-            "count": "1 item",
-            "rootCount": 1
-          }
-        },
-        {
-          "id": "final-library-normal-v3",
-          "status": "passed",
-          "testedAt": "2026-09-24T20:05:56.383Z",
-          "result": {
-            "passed": true,
-            "enabled": {
-              "items": 2,
-              "cards": 2,
-              "width": 360,
-              "height": 466
-            }
-          }
-        },
-        {
-          "id": "final-library-lifecycle-v2",
-          "status": "passed",
-          "testedAt": "2026-09-24T20:06:01.195Z",
-          "result": {
-            "passed": true,
-            "collectionFilter": true,
-            "disableCleanup": true,
-            "enableRenders": true
-          }
-        },
-        {
-          "id": "final-library-search",
-          "status": "passed",
-          "testedAt": "2026-09-24T20:06:25.286Z",
-          "result": {
-            "passed": true,
-            "searchFilters": true,
-            "emptyState": true,
-            "restoredItems": 2,
-            "visibleImage": {
-              "width": 360,
-              "height": 466
-            }
-          }
-        },
-        {
-          "id": "final-library-cold-start",
-          "status": "passed",
-          "testedAt": "2026-09-24T20:07:31.415Z",
-          "result": {
-            "passed": true,
-            "version": "9.0.6",
-            "libraryActive": true,
-            "readerActive": true,
-            "gridItems": 2,
-            "visibleImage": {
-              "width": 360,
-              "height": 466
-            },
-            "wordProcessorAutoInstallersDisabled": true
-          }
-        },
-        {
-          "id": "install-final-ZoteroThumbLibrary",
-          "status": "passed",
-          "testedAt": "2026-09-24T20:18:38.664Z",
-          "result": {
-            "id": "library-icon-view@local.zotero.plugins",
-            "name": "ZoteroThumbLibrary",
-            "version": "0.1.0",
-            "isActive": true
-          }
-        },
-        {
-          "id": "renamed-artifacts-smoke",
-          "status": "passed",
-          "testedAt": "2026-09-24T20:19:24.241Z",
-          "result": {
-            "passed": true,
-            "version": "9.0.6",
-            "library": {
+        "checks": [
+          {
+            "id": "library-native-hardened-install",
+            "status": "passed",
+            "testedAt": "2026-09-24T20:44:30.631Z",
+            "result": {
+              "id": "library-icon-view@local.zotero.plugins",
               "name": "ZoteroThumbLibrary",
-              "version": "0.1.0",
-              "isActive": true,
-              "imageWidth": 360,
-              "imageHeight": 466
-            },
-            "pdf": {
-              "name": "ZoteroThumbPDF",
-              "version": "1.1.0",
-              "isActive": true,
-              "pages": 3,
-              "decodedImages": 3,
-              "fullWidth": true
+              "version": "0.1.2",
+              "isActive": true
             }
+          },
+          {
+            "id": "library-native-hardened-proof",
+            "status": "passed",
+            "testedAt": "2026-09-24T20:44:33.886Z",
+            "result": {
+              "native": {
+                "distinctSourceFiles": 10,
+                "totalMS": 922,
+                "perDocumentMS": [
+                  85,
+                  135,
+                  77,
+                  83,
+                  109,
+                  110,
+                  81,
+                  77,
+                  74,
+                  73
+                ],
+                "calls": 10,
+                "successes": 10,
+                "pdfjsRendererCreated": false,
+                "dimensions": [
+                  [
+                    360,
+                    467
+                  ],
+                  [
+                    360,
+                    467
+                  ],
+                  [
+                    360,
+                    467
+                  ],
+                  [
+                    360,
+                    467
+                  ],
+                  [
+                    360,
+                    467
+                  ],
+                  [
+                    360,
+                    467
+                  ],
+                  [
+                    360,
+                    467
+                  ],
+                  [
+                    360,
+                    467
+                  ],
+                  [
+                    360,
+                    467
+                  ],
+                  [
+                    360,
+                    467
+                  ]
+                ]
+              },
+              "warm": {
+                "totalMS": 22,
+                "renders": 0,
+                "images": 10
+              },
+              "pdfjs": {
+                "documents": 10,
+                "totalMS": 487,
+                "perDocumentMS": [
+                  78,
+                  47,
+                  45,
+                  45,
+                  45,
+                  46,
+                  45,
+                  46,
+                  45,
+                  45
+                ],
+                "displayIntent": true
+              },
+              "nativeFailureFallback": {
+                "passed": true,
+                "totalMS": 74
+              },
+              "cancellation": {
+                "passed": true,
+                "totalMS": 24,
+                "remainingJobs": 0
+              },
+              "passed": true
+            }
+          },
+          {
+            "id": "library-012-feature-regression",
+            "status": "passed",
+            "testedAt": "2026-09-24T20:43:16.764Z",
+            "result": {
+              "passed": true,
+              "version": "0.1.2",
+              "collectionFilter": true,
+              "nativeSelection": true,
+              "multipleSelection": true,
+              "childDeduplication": true,
+              "missingFilePlaceholder": true,
+              "quickSearch": true,
+              "emptyState": true,
+              "listToggle": true,
+              "disableCleanup": true,
+              "reEnable": true,
+              "visibleImage": {
+                "width": 360,
+                "height": 467
+              }
+            },
+            "note": "Same final library source except subsequent stdin-close rejection handling; final native process path was separately re-tested."
+          },
+          {
+            "id": "library-012-scroll-zoom-stable",
+            "status": "passed",
+            "testedAt": "2026-09-24T20:44:35.129Z",
+            "result": {
+              "fixtureItems": 96,
+              "burstEvents": 60,
+              "immediateRenderCalls": 0,
+              "renderCallsAfterTwoFrames": 1,
+              "before": {
+                "size": 172,
+                "columns": 4,
+                "scrollTop": 3059,
+                "anchor": {
+                  "id": 93,
+                  "top": -47,
+                  "bottom": 209,
+                  "left": 274.5
+                }
+              },
+              "after": {
+                "size": 242,
+                "columns": 3,
+                "scrollTop": 4855,
+                "anchorStillMounted": true,
+                "anchorTop": -47,
+                "topDelta": 0
+              },
+              "frameCoalesced": true,
+              "anchorStable": true
+            }
+          },
+          {
+            "id": "library-012-gap-continuity",
+            "status": "passed",
+            "testedAt": "2026-09-24T20:43:18.862Z",
+            "result": {
+              "passed": true,
+              "frames": 24,
+              "maxAnchorShiftPixels": 0,
+              "existingImageRetained": true,
+              "metadataEditRenders": 0,
+              "mountedCards": 21,
+              "detachedCards": 29
+            },
+            "note": "Same final grid source; subsequent change only handled native subprocess stdin-close rejection."
           }
+        ]
+      },
+      "finalColdRestart": {
+        "id": "final-012-cold-cache-and-continuous-pdf",
+        "status": "passed",
+        "testedAt": "2026-09-24T20:48:13.437Z",
+        "result": {
+          "passed": true,
+          "version": "9.0.6",
+          "library": {
+            "name": "ZoteroThumbLibrary",
+            "version": "0.1.2",
+            "isActive": true,
+            "imageWidth": 360,
+            "imageHeight": 466,
+            "persistentCache": {
+              "path": "cache/zoteroThumbLibrary/v1",
+              "images": 96,
+              "renders": 0,
+              "totalMS": 59,
+              "rendererCreated": false
+            }
+          },
+          "pdf": {
+            "name": "ZoteroThumbPDF",
+            "version": "1.1.2",
+            "isActive": true,
+            "pages": 3,
+            "decodedImages": 3,
+            "fullWidth": true,
+            "continuousSlider": {
+              "step": "any",
+              "value": 237.25,
+              "cardWidth": 261.25,
+              "savedSize": 237,
+              "existingImageRetained": true
+            }
+          },
+          "wordProcessorAutoInstallersDisabled": true
         }
-      ]
-    },
-    "library011PersistentCache": {
-      "id": "library-disk-cache-proof",
-      "status": "passed",
-      "testedAt": "2026-09-24T20:32:57.984Z",
-      "result": {
-        "performance": {
-          "items": 96,
-          "coldMS": 96528,
-          "warmMS": 47,
-          "coldRenders": 96,
-          "warmRenders": 0,
-          "warmRendererCreated": false
+      },
+      "testApplication": {
+        "status": "cleanly-exited",
+        "testedAt": "2026-09-24T20:48:22.075Z",
+        "exitCode": 0,
+        "scope": "Only the dedicated disposable-profile Zotero process was quit.",
+        "automaticWordProcessorInstallersSkipped": true
+      },
+      "historical": {
+        "purpose": "Earlier version evidence and performance diagnosis retained separately from final-version checks.",
+        "library010": {
+          "artifact": "ZoteroThumbLibrary-0.1.0.xpi",
+          "sha256": "eec7294d9cfaa6009041dd0b5c3b7032ba986771de924edfa4b5bece9ac06bc8",
+          "status": "passed",
+          "checks": [
+            {
+              "id": "final-install-library-v2",
+              "status": "passed",
+              "testedAt": "2026-09-24T20:05:40.971Z",
+              "result": {
+                "id": "library-icon-view@local.zotero.plugins",
+                "name": "Library Icon View",
+                "version": "0.1.0",
+                "isActive": true
+              }
+            },
+            {
+              "id": "final-library-window-reopen",
+              "status": "passed",
+              "testedAt": "2026-09-24T20:05:43.013Z",
+              "result": {
+                "reopenPassed": true,
+                "count": "1 item",
+                "rootCount": 1
+              }
+            },
+            {
+              "id": "final-library-normal-v3",
+              "status": "passed",
+              "testedAt": "2026-09-24T20:05:56.383Z",
+              "result": {
+                "passed": true,
+                "enabled": {
+                  "items": 2,
+                  "cards": 2,
+                  "width": 360,
+                  "height": 466
+                }
+              }
+            },
+            {
+              "id": "final-library-lifecycle-v2",
+              "status": "passed",
+              "testedAt": "2026-09-24T20:06:01.195Z",
+              "result": {
+                "passed": true,
+                "collectionFilter": true,
+                "disableCleanup": true,
+                "enableRenders": true
+              }
+            },
+            {
+              "id": "final-library-search",
+              "status": "passed",
+              "testedAt": "2026-09-24T20:06:25.286Z",
+              "result": {
+                "passed": true,
+                "searchFilters": true,
+                "emptyState": true,
+                "restoredItems": 2,
+                "visibleImage": {
+                  "width": 360,
+                  "height": 466
+                }
+              }
+            },
+            {
+              "id": "final-library-cold-start",
+              "status": "passed",
+              "testedAt": "2026-09-24T20:07:31.415Z",
+              "result": {
+                "passed": true,
+                "version": "9.0.6",
+                "libraryActive": true,
+                "readerActive": true,
+                "gridItems": 2,
+                "visibleImage": {
+                  "width": 360,
+                  "height": 466
+                },
+                "wordProcessorAutoInstallersDisabled": true
+              }
+            },
+            {
+              "id": "install-final-ZoteroThumbLibrary",
+              "status": "passed",
+              "testedAt": "2026-09-24T20:18:38.664Z",
+              "result": {
+                "id": "library-icon-view@local.zotero.plugins",
+                "name": "ZoteroThumbLibrary",
+                "version": "0.1.0",
+                "isActive": true
+              }
+            },
+            {
+              "id": "renamed-artifacts-smoke",
+              "status": "passed",
+              "testedAt": "2026-09-24T20:19:24.241Z",
+              "result": {
+                "passed": true,
+                "version": "9.0.6",
+                "library": {
+                  "name": "ZoteroThumbLibrary",
+                  "version": "0.1.0",
+                  "isActive": true,
+                  "imageWidth": 360,
+                  "imageHeight": 466
+                },
+                "pdf": {
+                  "name": "ZoteroThumbPDF",
+                  "version": "1.1.0",
+                  "isActive": true,
+                  "pages": 3,
+                  "decodedImages": 3,
+                  "fullWidth": true
+                }
+              }
+            }
+          ]
         },
-        "sourceChangeMiss": true,
-        "corruptCacheRegenerated": true,
-        "diskCache": {
-          "files": 98,
-          "bytes": 1189622,
-          "entryLimit": 1000,
-          "byteLimit": 134217728
+        "library011PersistentCache": {
+          "id": "library-disk-cache-proof",
+          "status": "passed",
+          "testedAt": "2026-09-24T20:32:57.984Z",
+          "result": {
+            "performance": {
+              "items": 96,
+              "coldMS": 96528,
+              "warmMS": 47,
+              "coldRenders": 96,
+              "warmRenders": 0,
+              "warmRendererCreated": false
+            },
+            "sourceChangeMiss": true,
+            "corruptCacheRegenerated": true,
+            "diskCache": {
+              "files": 98,
+              "bytes": 1189622,
+              "entryLimit": 1000,
+              "byteLimit": 134217728
+            },
+            "passed": true
+          },
+          "note": "Before the hidden-frame scheduler fix and native macOS generation; cold timing is historical, not final performance."
         },
-        "passed": true
+        "hiddenRendererDiagnosis": {
+          "sourceEventIDs": [
+            "thumbnail-stage-profile",
+            "thumbnail-fast-display-profile"
+          ],
+          "finding": "Default PDF.js display rendering waited for throttled animation frames in the private hidden renderer. A MessageChannel scheduler in that private renderer removes the delay while retaining display semantics.",
+          "originalDisplay": {
+            "getDocumentMSRange": [
+              44.38,
+              53.84
+            ],
+            "getPageMSRange": [
+              0.19,
+              0.44
+            ],
+            "renderMSRange": [
+              950.81,
+              953.35
+            ],
+            "encodeMSRange": [
+              1.73,
+              2.4
+            ],
+            "destroyMSRange": [
+              0.57,
+              0.71
+            ]
+          },
+          "messageChannelProbe": {
+            "getDocumentMSRange": [
+              41.69,
+              43.3
+            ],
+            "renderMSRange": [
+              2.93,
+              3.22
+            ]
+          },
+          "finalNativeAndFallbackMeasurements": "See libraryIconView.checks/library-native-hardened-proof."
+        }
       },
-      "note": "Before the hidden-frame scheduler fix and native macOS generation; cold timing is historical, not final performance."
-    },
-    "hiddenRendererDiagnosis": {
-      "sourceEventIDs": [
-        "thumbnail-stage-profile",
-        "thumbnail-fast-display-profile"
-      ],
-      "finding": "Default PDF.js display rendering waited for throttled animation frames in the private hidden renderer. A MessageChannel scheduler in that private renderer removes the delay while retaining display semantics.",
-      "originalDisplay": {
-        "getDocumentMSRange": [
-          44.38,
-          53.84
-        ],
-        "getPageMSRange": [
-          0.19,
-          0.44
-        ],
-        "renderMSRange": [
-          950.81,
-          953.35
-        ],
-        "encodeMSRange": [
-          1.73,
-          2.4
-        ],
-        "destroyMSRange": [
-          0.57,
-          0.71
-        ]
-      },
-      "messageChannelProbe": {
-        "getDocumentMSRange": [
-          41.69,
-          43.3
-        ],
-        "renderMSRange": [
-          2.93,
-          3.22
-        ]
-      },
-      "finalNativeAndFallbackMeasurements": "See libraryIconView.checks/library-native-hardened-proof."
+      "portableTests": {
+        "status": "passed",
+        "total": 43
+      }
     }
-  },
-  "portableTests": {
-    "status": "passed",
-    "total": 43
   }
 }

@@ -7,10 +7,11 @@ const vm = require("node:vm");
 const source = fs.readFileSync(path.join(__dirname, "../thumbnail-renderer.js"), "utf8")
   .replace(/^import \* as pdfjsLib from [^\n]+;\n/m, "");
 
-function fixture() {
+function fixture({ imageWidth = 300, imageHeight = 450 } = {}) {
   const messages = [], channels = [], listeners = new Map(), canvases = [];
   const originalRequest = () => { throw new Error("Hidden document animation frames must not be used"); };
   const originalCancel = () => {};
+  const imageState = { revoked: [], draws: [] };
   class MessageChannel {
     constructor() {
       this.port1 = { closed: false, onmessage: null, close() { this.closed = true; } };
@@ -32,12 +33,17 @@ function fixture() {
   const pdfjsLib = { GlobalWorkerOptions: {}, AnnotationMode: { DISABLE: 0 } };
   const document = { createElement(type) {
     assert.equal(type, "canvas");
-    const canvas = { width: 0, height: 0, getContext: () => ({}), toDataURL: () => "data:image/png;base64,fixture" };
+    const canvas = { width: 0, height: 0, getContext: () => ({ fillRect() {},
+      drawImage(image, x, y, width, height) { imageState.draws.push({ x, y, width, height }); }
+    }), toDataURL: () => "data:image/png;base64,fixture" };
     canvases.push(canvas);
     return canvas;
   } };
-  vm.runInNewContext(source, { window, document, pdfjsLib, Event: class { constructor(type) { this.type = type; } } });
-  return { window, pdfjsLib, channels, messages, canvases, originalRequest, originalCancel,
+  vm.runInNewContext(source, { window, document, pdfjsLib, Blob,
+    URL: { createObjectURL: () => "blob:cover", revokeObjectURL: value => imageState.revoked.push(value) },
+    Image: class { constructor() { this.naturalWidth = imageWidth; this.naturalHeight = imageHeight; } async decode() {} },
+    Event: class { constructor(type) { this.type = type; } } });
+  return { window, pdfjsLib, channels, messages, canvases, originalRequest, originalCancel, imageState,
     flushOne() { messages.shift()?.(); }, unload() { window.dispatchEvent({ type: "unload" }); } };
 }
 
@@ -107,5 +113,24 @@ test("PDF thumbnail rendering keeps display intent and releases its canvas and d
   assert.equal(result.height, 466);
   assert.equal(destroyed, 1);
   assert.ok(harness.canvases.every(canvas => canvas.width === 0 && canvas.height === 0));
+  harness.unload();
+});
+
+test("cover rendering preserves the image aspect ratio without page-sized white padding", async () => {
+  const harness = fixture({ imageWidth: 600, imageHeight: 900 });
+  const result = await harness.window.LibraryThumbnailRenderer.render({ bytes: new Uint8Array([1]), mime: "image/png" });
+  assert.equal(result.width, 320);
+  assert.equal(result.height, 480);
+  assert.deepEqual(harness.imageState.draws, [{ x: 0, y: 0, width: 320, height: 480 }]);
+  assert.deepEqual(harness.imageState.revoked, ["blob:cover"]);
+  assert.ok(harness.canvases.every(canvas => canvas.width === 0 && canvas.height === 0));
+  harness.unload();
+});
+
+test("excessive image dimensions are rejected before allocating a rendering canvas", async () => {
+  const harness = fixture({ imageWidth: 10000, imageHeight: 10000 });
+  assert.equal(await harness.window.LibraryThumbnailRenderer.render({ bytes: new Uint8Array([1]), mime: "image/png" }), null);
+  assert.equal(harness.canvases.length, 0);
+  assert.deepEqual(harness.imageState.revoked, ["blob:cover"]);
   harness.unload();
 });

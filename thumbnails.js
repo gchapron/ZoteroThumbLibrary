@@ -26,8 +26,8 @@ var LibraryThumbnails = class LibraryThumbnails {
     this._browser = null;
     this._rendererPromise = null;
     this._abortActive = null;
-    this._nativeRenderer = typeof LibraryNativeThumbnails === "undefined" ? null
-      : new LibraryNativeThumbnails({ Zotero, window });
+    this._epubCover = typeof LibraryEPUBCover === "undefined" ? null
+      : new LibraryEPUBCover({ Zotero, window });
     this._diskDirectory = diskCache && Zotero.Profile?.dir && Zotero.Utilities?.Internal?.md5
       ? Zotero.Profile.dir + "/cache/zoteroThumbLibrary/v1" : null;
     this.maxDiskEntries = maxDiskEntries;
@@ -53,7 +53,7 @@ var LibraryThumbnails = class LibraryThumbnails {
       }
       if (!item || !eligible()) return null;
       const mime = item.attachmentContentType || "";
-      if (mime !== "application/pdf" && !mime.startsWith("image/")) return null;
+      if (mime !== "application/pdf" && mime !== "application/epub+zip" && !mime.startsWith("image/")) return null;
       const path = await item.getFilePathAsync();
       if (!path || !eligible()) return null;
       const stat = await IOUtils.stat(path);
@@ -169,29 +169,21 @@ var LibraryThumbnails = class LibraryThumbnails {
       return await Promise.race([
         watchdog,
         (async () => {
-          // Quick Look is already installed on macOS and reads the local file
-          // directly. Other platforms and native failures use bundled PDF.js.
-          let nativeResult = null;
-          try {
-            nativeResult = await this._nativeRenderer?.render({
-              path: job.path, mime: job.mime, maxWidth: 360, maxHeight: 480
-            });
-          }
-          catch (error) { this._log(error); }
-          if (!eligible()) return null;
-          if (nativeResult) {
-            return {
-              src: String(nativeResult.src), width: Number(nativeResult.width),
-              height: Number(nativeResult.height), attachmentID: job.attachmentID
-            };
+          // EPUB previews use the actual cover image, not a rendered book page.
+          // PDF and image rendering stays inside Zotero on every platform.
+          let bytes, mime = job.mime;
+          if (mime === "application/epub+zip") {
+            const cover = await this._epubCover?.extract(job.path, { eligible });
+            if (!cover || !eligible()) return null;
+            ({ bytes, mime } = cover);
           }
           const rendererWindow = await this._getRenderer();
           if (!eligible()) return null;
-          const bytes = await IOUtils.read(job.path);
+          if (!bytes) bytes = await IOUtils.read(job.path);
           if (!eligible()) return null;
           const options = Components.utils.cloneInto({
             bytes,
-            mime: job.mime,
+            mime,
             maxWidth: 360,
             maxHeight: 480
           }, rendererWindow);
@@ -208,7 +200,6 @@ var LibraryThumbnails = class LibraryThumbnails {
       ]);
     }
     catch (error) {
-      this._nativeRenderer?.cancel();
       this._resetRenderer();
       throw error;
     }
@@ -465,7 +456,6 @@ var LibraryThumbnails = class LibraryThumbnails {
     this.window.clearTimeout(this._pruneTimer);
     this._pruneTimer = null;
     this.clear();
-    this._nativeRenderer?.destroy();
     this._resetRenderer();
   }
 
