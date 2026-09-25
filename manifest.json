@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "ZoteroThumbLibrary",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "Browse your Zotero library as a grid of PDF previews, EPUB covers, and images.",
   "applications": {
     "zotero": {

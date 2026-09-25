@@ -70,6 +70,9 @@ var LibraryIconView = class {
     this.pane.append(this.root);
     this.listen(this.viewport, "scroll", () => this.scheduleRender(), { passive: true });
     this.listen(this.viewport, "keydown", event => this.keydown(event));
+    this.listen(this.root, "dragover", event => this.onFileDragOver(event));
+    this.listen(this.root, "drop", event => this.onFileDrop(event));
+    this.listen(this.root, "dragleave", event => this.onFileDragLeave(event));
     this.resize = new this.window.ResizeObserver(() => this.scheduleRender({ preserveAnchor: true, animate: true }));
     this.resize.observe(this.viewport);
     this.onRefresh = () => this.scheduleRefresh();
@@ -181,6 +184,7 @@ var LibraryIconView = class {
   toggle() {
     this.enabled = !this.enabled;
     if (!this.enabled) {
+      this.clearFileDrop();
       this.engine.clearQueue();
       if (this.renderFrame !== null) this.window.cancelAnimationFrame(this.renderFrame);
       this.renderFrame = null;
@@ -634,6 +638,108 @@ var LibraryIconView = class {
     }
   }
 
+  fileDropTarget(event) {
+    this.bindView();
+    let view = this.view;
+    let transfer = event.dataTransfer;
+    // Internal Zotero drags may also carry files. Let their existing targets
+    // handle them instead of importing another copy of an attachment.
+    if (this.dead || !this.enabled || Zotero.locked || !transfer
+      || !transfer.types.includes("application/x-moz-file")
+      || Array.from(transfer.types).some(type => type.startsWith("zotero/"))
+      || typeof view?.onDragOver !== "function" || typeof view.onDrop !== "function"
+      || typeof view.canDropCheck !== "function" || !this.collectionRows(view).length) return null;
+    let card = event.target.closest?.(".ziv-card") || null;
+    let row = -1;
+    if (card) {
+      let id = Number(card.getAttribute("data-item-id"));
+      row = view.getRowIndexByID?.(id);
+      if (this.cards.get(id) !== card || !Number.isInteger(row) || row < 0) return null;
+    }
+    return { view, row, card, element: card || this.viewport };
+  }
+
+  onFileDragOver(event) {
+    if (this.dead || !this.enabled) return;
+    event.preventDefault();
+    event.stopPropagation();
+    try {
+      let target = this.fileDropTarget(event);
+      if (this.fileDrop?.view !== target?.view || this.fileDrop?.element !== target?.element) this.clearFileDrop();
+      if (!target) {
+        if (event.dataTransfer) event.dataTransfer.dropEffect = "none";
+        return;
+      }
+      this.fileDrop = target;
+      let rect = target.element.getBoundingClientRect();
+      // Native rows use the event target's vertical position to distinguish
+      // attachment drops from drops between rows. The whole icon is one target,
+      // including its image and caption; gaps use the native blank-space row.
+      target.view.onDragOver({
+        target: target.element, currentTarget: target.element,
+        clientY: rect.top + rect.height / 2,
+        dataTransfer: event.dataTransfer,
+        metaKey: event.metaKey, altKey: event.altKey,
+        ctrlKey: event.ctrlKey, shiftKey: event.shiftKey,
+        preventDefault: () => event.preventDefault(),
+        stopPropagation: () => event.stopPropagation()
+      }, target.row);
+      // Zotero returns false for both accepted and rejected dragovers.
+      if (event.dataTransfer.dropEffect === "none") this.clearFileDrop();
+      else target.element.setAttribute("data-file-drop", "true");
+    }
+    catch (error) {
+      this.clearFileDrop();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "none";
+      Zotero.logError(error);
+    }
+  }
+
+  async onFileDrop(event) {
+    if (this.dead || !this.enabled) return;
+    event.preventDefault();
+    event.stopPropagation();
+    try {
+      let target = this.fileDropTarget(event);
+      let orient = target?.card ? 0 : -1;
+      // Resolve and validate again: collections and native row indices may have
+      // changed during the drag. onDrop itself assumes validation already ran.
+      if (!target || !target.view.canDropCheck(target.row, orient, event.dataTransfer)) {
+        if (event.dataTransfer) event.dataTransfer.dropEffect = "none";
+        this.clearFileDrop();
+        return;
+      }
+      let context = this.contextKey(target.view);
+      Zotero.DragDrop.currentOrientation = orient;
+      // Start synchronously while Gecko still exposes the native file payload.
+      // Zotero owns import/link/move, permissions, renaming and recognition.
+      let pending = target.view.onDrop(event, target.row);
+      this.clearFileDrop();
+      await pending;
+      if (!this.dead && this.enabled && this.view === target.view
+        && this.window.ZoteroPane.itemsView === target.view
+        && this.contextKey(target.view) === context) this.scheduleRefresh(true);
+    }
+    catch (error) {
+      this.clearFileDrop();
+      Zotero.logError(error);
+    }
+  }
+
+  onFileDragLeave(event) {
+    if (!event.relatedTarget || !this.root.contains(event.relatedTarget)) this.clearFileDrop();
+  }
+
+  clearFileDrop() {
+    let target = this.fileDrop;
+    if (!target) return;
+    this.fileDrop = null;
+    target.element.removeAttribute("data-file-drop");
+    try { target.view.onDragLeave?.(); }
+    catch (error) { Zotero.logError(error); }
+    Zotero.DragDrop.currentDropEffect = null;
+  }
+
   async open(item, event) {
     try { await this.window.ZoteroPane.viewItems([item], event); }
     catch (error) { Zotero.logError(error); }
@@ -761,6 +867,7 @@ var LibraryIconView = class {
   destroy() {
     if (this.dead) return;
     this.endDrag();
+    this.clearFileDrop();
     this.dead = true;
     this.persistSize();
     if (this.renderFrame !== null) this.window.cancelAnimationFrame(this.renderFrame);

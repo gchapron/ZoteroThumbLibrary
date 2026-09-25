@@ -1,0 +1,98 @@
+{
+  "passed": true,
+  "testedAt": "2026-09-25T11:15:38.908Z",
+  "zoteroVersion": "10.0.4",
+  "pluginVersion": "0.1.10",
+  "platform": "macOS",
+  "profile": "/private/tmp/ziv-file-drop-runtime-hinzc5rt/profile",
+  "data": "/private/tmp/ziv-file-drop-runtime-hinzc5rt/data",
+  "mode": "Headless Zotero actual DOM DragEvents and nsIFile DataTransfer; isolated synthetic text files",
+  "checks": {
+    "emptyCollectionBackgroundCopy": {
+      "overPrevented": true,
+      "dropPrevented": true,
+      "effect": "move"
+    },
+    "storedBytesMatchAndSourcePreserved": true,
+    "importedCardAppears": true,
+    "multipleFileImport": {
+      "tested": false,
+      "reason": "Constructed Gecko DataTransfer rejects mozSetDataAt index 1. Multiple-file database import was not runtime-tested."
+    },
+    "cardDescendantAttachesToParent": true,
+    "macCommandOptionLinksFile": true,
+    "macCommandMovesFile": true,
+    "attachmentCardRejected": {
+      "overPrevented": true,
+      "dropPrevented": true,
+      "effect": "none"
+    },
+    "unsupportedTextIgnored": {
+      "overPrevented": true,
+      "dropPrevented": true,
+      "effect": "none"
+    },
+    "internalItemWithFileFlavorIgnored": {
+      "overPrevented": true,
+      "dropPrevented": true,
+      "effect": "none"
+    },
+    "savedSearchBackgroundRejected": {
+      "overPrevented": true,
+      "dropPrevented": true,
+      "effect": "none"
+    },
+    "readOnlyLibraryRejected": {
+      "overPrevented": true,
+      "dropPrevented": true,
+      "effect": "move",
+      "nativeWarnings": 1
+    }
+  },
+  "nativeCalls": [
+    {
+      "row": -1,
+      "orientation": -1,
+      "metaKey": false,
+      "altKey": false,
+      "completed": true
+    },
+    {
+      "row": 1,
+      "orientation": 0,
+      "metaKey": false,
+      "altKey": false,
+      "completed": true
+    },
+    {
+      "row": -1,
+      "orientation": -1,
+      "metaKey": true,
+      "altKey": true,
+      "completed": true
+    },
+    {
+      "row": -1,
+      "orientation": -1,
+      "metaKey": true,
+      "altKey": false,
+      "completed": true
+    },
+    {
+      "row": -1,
+      "orientation": -1,
+      "metaKey": false,
+      "altKey": false,
+      "completed": true
+    }
+  ],
+  "fixtureCollectionID": 1,
+  "fixtureParentItemID": 2,
+  "importedAttachmentCount": 4,
+  "limitations": "Synthetic browser events exercise actual import/database code; no manual Finder drag or screenshot review. Multiple-file runtime coverage depends on constructed DataTransfer support, as recorded above. Only the read-only message display is stubbed.",
+  "package": {
+    "source": "ZoteroThumbLibrary/dist/ZoteroThumbLibrary-0.1.10.xpi",
+    "sha256": "8c8fb231875c962f2cbee21bcac77f5a3063d9785dd4cbd34beba6ff7406edcd"
+  },
+  "execution": "/Applications/Zotero.app/Contents/MacOS/zotero -no-remote -profile /private/tmp/ziv-file-drop-runtime-hinzc5rt/profile -headless"
+}

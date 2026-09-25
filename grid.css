@@ -15,6 +15,8 @@
 .ziv-card:hover { background: var(--fill-quinary, #e7eaf0); }
 .ziv-card[aria-selected="true"] { background: rgba(50,108,174,.15); border-color: #397ac4; }
 .ziv-card:focus-visible { outline: 2px solid #397ac4; outline-offset: 2px; }
+#ziv-viewport[data-file-drop="true"] { box-shadow: inset 0 0 0 2px #397ac4; }
+.ziv-card[data-file-drop="true"] { border-color: #397ac4; background: rgba(50,108,174,.15); }
 .ziv-preview { display: flex; align-items: center; justify-content: center; min-height: 0; width: 100%; flex: 1; margin-bottom: 8px; }
 .ziv-preview img { display: block; width: auto; height: auto; max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 2px 7px #0003; background: white; border-radius: 2px; }
 .ziv-placeholder { width: 70%; height: 82%; border: 1px solid var(--fill-quaternary, #ccc); border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--fill-secondary, #667); background: var(--material-sidepane, #eceef2); font-size: 24px; }
