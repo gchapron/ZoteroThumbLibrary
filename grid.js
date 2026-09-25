@@ -333,7 +333,7 @@ var LibraryIconView = class {
 
   createCard(item) {
     let title = item.getDisplayTitle?.() || item.getField?.("title") || "Untitled";
-    let card = this.el("div", { class: "ziv-card", role: "option", tabindex: "-1", "data-item-id": item.id, "aria-label": title, title });
+    let card = this.el("div", { class: "ziv-card", role: "option", tabindex: "-1", draggable: "true", "data-item-id": item.id, "aria-label": title, title });
     // FLIP coordinates require this origin even if Gecko retains an older stylesheet after a hot update.
     card.style.transformOrigin = "top left";
     let preview = this.el("div", { class: "ziv-preview", "aria-hidden": "true" });
@@ -345,6 +345,8 @@ var LibraryIconView = class {
     card.append(preview, this.el("span", { class: "ziv-title" }, title), this.el("span", { class: "ziv-meta" }, [creator, year].filter(Boolean).join(" · ")));
     card.addEventListener("click", event => this.select(item.id, event));
     card.addEventListener("dblclick", event => this.open(item, event));
+    card.addEventListener("dragstart", event => this.startDrag(event, item.id));
+    card.addEventListener("dragend", () => this.endDrag());
     card.addEventListener("contextmenu", async event => {
       event.preventDefault();
       if (!this.view.getSelectedItems(true).includes(item.id)) await this.select(item.id, {});
@@ -378,7 +380,7 @@ var LibraryIconView = class {
       if (result?.src) {
         let oldImage = card._preview.querySelector("img");
         if (oldImage?.getAttribute("src") !== result.src) {
-          let img = this.el("img", { src: result.src, alt: "", decoding: "async", width: result.width, height: result.height });
+          let img = this.el("img", { src: result.src, alt: "", draggable: "false", decoding: "async", width: result.width, height: result.height });
           try { await img.decode(); } catch (_) {}
           if (this.dead || token !== card._previewToken || !card.isConnected) return;
           card._preview.replaceChildren(img);
@@ -422,6 +424,55 @@ var LibraryIconView = class {
     }
   }
 
+  startDrag(event, id) {
+    this.bindView();
+    let view = this.view;
+    let index = view?.getRowIndexByID?.(id);
+    // A missing native row is reported as false, which must not become row 0.
+    if (this.dead || !this.enabled || Zotero.locked || !event.dataTransfer
+      || !Number.isInteger(index) || index < 0 || typeof view.onDragStart !== "function") {
+      event.preventDefault();
+      return;
+    }
+    this.endDrag();
+    this.dragSource = { view, row: view.collectionTreeRow };
+    try {
+      let wasSelected = view.getSelectedItems(true).includes(id);
+      // DataTransfer is writable only during this synchronous event. Zotero
+      // selects an unselected source row and preserves an existing multiselection.
+      // It also supplies the item IDs, file flavors and collection drag context
+      // required by the tag selector and other native drop targets.
+      view.onDragStart(event, index);
+      if (!wasSelected) this.anchor = id;
+      this.focusID = id;
+      this.syncSelection();
+      let card = this.cards.get(id);
+      if (card) {
+        let rect = card.getBoundingClientRect();
+        event.dataTransfer.setDragImage(card,
+          Math.max(0, Math.min(rect.width, event.clientX - rect.left)),
+          Math.max(0, Math.min(rect.height, event.clientY - rect.top)));
+      }
+      event.stopPropagation();
+    }
+    catch (error) {
+      event.preventDefault();
+      this.endDrag();
+      Zotero.logError(error);
+    }
+  }
+
+  endDrag() {
+    let source = this.dragSource;
+    if (!source) return;
+    this.dragSource = null;
+    try { source.view.onDragEnd(); }
+    catch (error) { Zotero.logError(error); }
+    finally {
+      if (Zotero.DragDrop.currentDragSource === source.row) Zotero.DragDrop.currentDragSource = null;
+    }
+  }
+
   async open(item, event) {
     try { await this.window.ZoteroPane.viewItems([item], event); }
     catch (error) { Zotero.logError(error); }
@@ -449,8 +500,24 @@ var LibraryIconView = class {
     return true;
   }
 
+  forwardTagShortcut(event) {
+    if (event.shiftKey || event.ctrlKey || event.metaKey || event.altKey || event.isComposing
+      || !/^(?:Digit|Numpad)[0-9]$/.test(event.code)) return false;
+    this.bindView();
+    if (!this.view || typeof this.view.handleKeyDown !== "function") return false;
+    // Use physical key codes, as Zotero does, including on non-US keyboards.
+    // The native handler owns colored-tag positions, mixed selections, toggling,
+    // and 0 (remove colored tags). Keep read-only libraries unchanged.
+    if (this.view.collectionTreeRow?.editable === false || this.view.handleKeyDown(event) === false) {
+      event.preventDefault(); event.stopPropagation();
+      return true;
+    }
+    return false;
+  }
+
   keydown(event) {
     if (this.forwardPreviewShortcut(event)) return;
+    if (this.forwardTagShortcut(event)) return;
     let ids = this.items.map(item => item.id);
     if (!ids.length) return;
     let index = ids.indexOf(this.focusID || this.view.getSelectedItems(true)[0]);
@@ -485,6 +552,7 @@ var LibraryIconView = class {
 
   destroy() {
     if (this.dead) return;
+    this.endDrag();
     this.dead = true;
     this.persistSize();
     if (this.renderFrame !== null) this.window.cancelAnimationFrame(this.renderFrame);

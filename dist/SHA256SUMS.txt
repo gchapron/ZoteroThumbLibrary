@@ -1,1 +1,1 @@
-a3c8f307b09597d7540567d5c4ed5cf0ceed52de3070763b4c2bbbd13bbed2dd  ZoteroThumbLibrary-0.1.3.xpi
+40e4ceb4c86e38cec8a876890fec6421dc7e7bb114be3128623b7ee77fe258a6  ZoteroThumbLibrary-0.1.4.xpi

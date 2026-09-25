@@ -6,7 +6,7 @@ A macOS Zotero plugin that replaces the library table with a scrollable grid of 
 
 This initial release targets **Zotero 9.0.x** and was developed and exercised with **Zotero 9.0.6 on macOS**.
 
-1. Download or use `dist/ZoteroThumbLibrary-0.1.3.xpi`.
+1. Download or use `dist/ZoteroThumbLibrary-0.1.4.xpi`.
 2. In Zotero, choose **Tools → Plugins**.
 3. Open the gear menu, choose **Install Plugin From File…**, and select the XPI.
 4. Restart Zotero if prompted.
@@ -20,10 +20,12 @@ No Python, Node, or developer setup is needed to install the packaged plugin. It
 - Click to select a card and view its metadata. Double-click or press Enter to open it normally.
 - Use ⌘-click or Shift-click for multiple selection, arrow keys to move, and ⌘A to select the displayed items.
 - Press **Space** to open or close the selected file in **Zotero7QuickLook**, when that plugin is installed. Its Escape, ⌘Y, Shift-Space, and Option-Space shortcuts also work from the grid. Previewing preserves the selection and grid focus.
+- Drag a card onto a tag in Zotero's bottom-left tag panel to assign that tag. Dragging an already-selected card includes all selected items; dragging an unselected card selects that item first. On macOS, hold **⌘** while dropping to remove the tag.
+- Press **1–9** to toggle the corresponding colored tag on the selected items, or **0** to remove their colored tags. Assign colors and shortcut positions in Zotero's tag panel first. Number-pad keys work too. Read-only libraries cannot be changed.
 - Right-click for Zotero's normal item actions.
 - Adjust the **Size** slider to resize cards. Column changes animate while keeping the same item at the top of the viewport. The view choice and card size are remembered.
 
-Switch to list view for sorting columns, dragging items, expanding multiple attachments, and other table-specific operations. Expanded children are grouped into their parent's card. Disabling the plugin removes its controls and renderer and restores the original list.
+Switch to list view for sorting columns, expanding multiple attachments, and other table-specific operations. Expanded children are grouped into their parent's card. Disabling the plugin removes its controls and renderer and restores the original list.
 
 ## Previews and limits
 
@@ -59,7 +61,9 @@ Run the dependency-free tests with Node:
 node --test tests/*.test.cjs
 ```
 
-Tests cover large-library layout bounds, selection, attachment grouping, window reopening, scroll coalescing, zoom anchoring, decoded-card reuse, reduced motion, QuickLook shortcut forwarding, EPUB cover extraction, request deduplication, source-file invalidation, disk-cache persistence and recovery, cache eviction, cancellation, rapid scrolling, and hidden-renderer scheduling.
+Tests cover large-library layout bounds, selection, attachment grouping, window reopening, scroll coalescing, zoom anchoring, decoded-card reuse, reduced motion, native item dragging and colored-tag shortcut forwarding, QuickLook shortcut forwarding, EPUB cover extraction, request deduplication, source-file invalidation, disk-cache persistence and recovery, cache eviction, cancellation, rapid scrolling, and hidden-renderer scheduling.
+
+The tagging update includes 61 passing portable tests. Actual Zotero checks exercise card drag events through the native tag panel, multiple selection, Command-drop removal, numbered colored-tag toggling, range-selection anchoring, and the read-only shortcut guard.
 
 `tests/runtime-results.json` records actual Zotero verification using a disposable profile and synthetic files. Checks included a decoded **360 × 466** first-page PNG, native selection, collection filtering, search and empty states, view switching, disable/enable cleanup, main-window reopening, and a cold application restart. Runtime checks inspected live DOM and application state; no screenshot-based visual review was completed. A real library containing 100,000 PDFs was not loaded; large-library bounds were checked by the portable model tests.
 

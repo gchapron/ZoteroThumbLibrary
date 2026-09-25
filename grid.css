@@ -11,7 +11,7 @@
 .ziv-header input { width: 90px; height: 18px; margin: 0; accent-color: #3277cd; }
 #ziv-viewport { flex: 1; min-height: 0; overflow: auto; position: relative; outline: none; overscroll-behavior: contain; overflow-anchor: none; scrollbar-gutter: stable; }
 #ziv-cards { position: relative; overflow-anchor: none; }
-.ziv-card { box-sizing: border-box; position: absolute; left: 0; top: 0; display: flex; flex-direction: column; padding: 8px; border: 2px solid transparent; border-radius: 9px; background: transparent; color: inherit; text-align: center; font: inherit; cursor: default; outline: none; transform-origin: top left; contain: layout style; }
+.ziv-card { box-sizing: border-box; position: absolute; left: 0; top: 0; display: flex; flex-direction: column; padding: 8px; border: 2px solid transparent; border-radius: 9px; background: transparent; color: inherit; text-align: center; font: inherit; cursor: default; user-select: none; outline: none; transform-origin: top left; contain: layout style; }
 .ziv-card:hover { background: var(--fill-quinary, #e7eaf0); }
 .ziv-card[aria-selected="true"] { background: rgba(50,108,174,.15); border-color: #397ac4; }
 .ziv-card:focus-visible { outline: 2px solid #397ac4; outline-offset: 2px; }
