@@ -19,6 +19,7 @@ No Python, Node, or developer setup is needed to install the packaged plugin. It
 - Collections, saved searches, tags, and quick search use Zotero's existing filtered item view and sort order.
 - Click to select a card and view its metadata. Double-click or press Enter to open it normally.
 - Use ⌘-click or Shift-click for multiple selection, arrow keys to move, and ⌘A to select the displayed items.
+- Press the Mac **Delete (⌫)** key above Return to apply Zotero's normal delete action to the selected entries. In the library this moves them to Trash; in a collection it removes them from that collection. **⌘Delete** moves collection items to Trash. In Trash, Zotero's permanent-deletion confirmation applies. Native permissions and confirmation dialogs are preserved. Holding the key does not delete successive entries.
 - Press **Space** to open or close the selected file in **Zotero7QuickLook**, when that plugin is installed. Its Escape, ⌘Y, Shift-Space, and Option-Space shortcuts also work from the grid. Previewing preserves the selection and grid focus.
 - Drag a card onto a tag in Zotero's bottom-left tag panel to assign that tag. Dragging an already-selected card includes all selected items; dragging an unselected card selects that item first. On macOS, hold **⌘** while dropping to remove the tag.
 - Press **1–9** to toggle the corresponding colored tag on the selected items, or **0** to remove their colored tags. Assign colors and shortcut positions in Zotero's tag panel first. Number-pad keys work too. Read-only libraries cannot be changed.
@@ -61,17 +62,19 @@ Run the dependency-free tests with Node:
 node --test tests/*.test.cjs
 ```
 
-Tests cover large-library layout bounds, selection, attachment grouping, window reopening, scroll coalescing, zoom anchoring, decoded-card reuse, reduced motion, native item dragging and colored-tag shortcut forwarding, QuickLook shortcut forwarding, EPUB cover extraction, request deduplication, source-file invalidation, disk-cache persistence and recovery, cache eviction, cancellation, rapid scrolling, and hidden-renderer scheduling.
+Tests cover large-library layout bounds, selection, attachment grouping, window reopening, scroll coalescing, zoom anchoring, decoded-card reuse, reduced motion, native item dragging, colored-tag shortcuts, Delete-key handling and selection continuity, QuickLook shortcut forwarding, EPUB cover extraction, request deduplication, source-file invalidation, disk-cache persistence and recovery, cache eviction, cancellation, rapid scrolling, and hidden-renderer scheduling.
 
-The tagging update includes 61 passing portable tests. Actual Zotero checks exercise card drag events through the native tag panel, multiple selection, Command-drop removal, numbered colored-tag toggling, range-selection anchoring, and the read-only shortcut guard.
+The current release includes 70 passing portable tests. Actual Zotero checks exercise card drag events through the native tag panel, multiple selection, Command-drop removal, numbered colored-tag toggling, range-selection anchoring, and the read-only shortcut guard.
 
-`tests/runtime-results.json` records actual Zotero verification using a disposable profile and synthetic files. Checks included a decoded **360 × 466** first-page PNG, native selection, collection filtering, search and empty states, view switching, disable/enable cleanup, main-window reopening, and a cold application restart. Runtime checks inspected live DOM and application state; no screenshot-based visual review was completed. A real library containing 100,000 PDFs was not loaded; large-library bounds were checked by the portable model tests.
+`tests/delete-runtime-result.json` records the 0.1.5 Delete-key checks in a disposable Zotero profile: native confirmation and cancellation, multiple selection, library Trash, collection removal versus Command-Delete, repeat protection, and read-only handling.
+
+`tests/runtime-results.json` preserves the preceding releases' actual Zotero verification using a disposable profile and synthetic files. Checks included a decoded **360 × 466** first-page PNG, native selection, collection filtering, search and empty states, view switching, disable/enable cleanup, main-window reopening, and a cold application restart. Runtime checks inspected live DOM and application state; no screenshot-based visual review was completed. A real library containing 100,000 PDFs was not loaded; large-library bounds were checked by the portable model tests.
 
 ## Publish a release
 
 1. Set the intended version in `manifest.json`, update the README, and run the tests and build above.
 2. Verify the installer in a disposable Zotero profile and retain the results under `tests/`.
-3. Commit and push the source, then create a Git tag matching the manifest version (for example, `v0.1.4`) on that exact commit.
+3. Commit and push the source, then create a Git tag matching the manifest version (for example, `v0.1.5`) on that exact commit.
 4. Create a draft GitHub Release for the tag, add release notes, and attach the generated XPI and `SHA256SUMS.txt`. Verify the assets before publishing.
 
 The tag preserves the release source; its assets provide the installable package. Keep generated files out of commits.

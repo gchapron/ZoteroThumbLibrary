@@ -515,7 +515,49 @@ var LibraryIconView = class {
     return false;
   }
 
+  forwardDeleteShortcut(event) {
+    if (!["Backspace", "Delete"].includes(event.key) || event.defaultPrevented || event.isComposing
+      || this.dead || !this.enabled || event.target?.isContentEditable
+      || event.target?.closest?.("input, textarea, select, textbox")) return false;
+    // Zotero's pane keypress handler accepts Backspace on macOS and forward
+    // Delete on every platform. Grid cards are outside its native tree target.
+    if (event.key === "Backspace" && !Zotero.isMac) return false;
+    this.bindView();
+    if (!this.view || typeof this.window.ZoteroPane?.deleteSelectedItems !== "function") return false;
+    event.preventDefault(); event.stopPropagation();
+    // A held key or an in-flight deletion must not act on the next selection.
+    if (event.repeat || this.deleting || Zotero.locked || !this.view.getSelectedItems(true).length) return true;
+    let force = !!(event.metaKey || (!Zotero.isMac && event.shiftKey));
+    this.deleteSelection(force);
+    return true;
+  }
+
+  async deleteSelection(force) {
+    this.deleting = true;
+    let view = this.view;
+    let row = view.collectionTreeRow;
+    try {
+      // Keep native permissions, confirmation dialogs, cancellation, collection
+      // removal, Trash, and permanent deletion in Zotero's own command.
+      await this.window.ZoteroPane.deleteSelectedItems(force);
+      if (this.dead || !this.enabled || this.view !== view
+        || this.window.ZoteroPane.itemsView !== view || view.collectionTreeRow !== row) return;
+      this.refresh();
+      if (!this.items.some(item => item.id === this.focusID)) {
+        let visible = new Set(this.items.map(item => item.id));
+        this.focusID = view.getSelectedItems(true).find(id => visible.has(id));
+        this.anchor = this.focusID;
+      }
+      // Retiring a focused card moves focus to the viewport. Resume keyboard
+      // navigation at Zotero's surviving selection without stealing field focus.
+      if (this.doc.activeElement === this.viewport) this.cards.get(this.focusID)?.focus({ preventScroll: true });
+    }
+    catch (error) { Zotero.logError(error); }
+    finally { this.deleting = false; }
+  }
+
   keydown(event) {
+    if (this.forwardDeleteShortcut(event)) return;
     if (this.forwardPreviewShortcut(event)) return;
     if (this.forwardTagShortcut(event)) return;
     let ids = this.items.map(item => item.id);

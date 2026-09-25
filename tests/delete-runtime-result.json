@@ -1,0 +1,53 @@
+{
+  "status": "passed",
+  "verifiedAt": "2026-09-25T05:05:44.567Z",
+  "artifact": {
+    "name": "ZoteroThumbLibrary-0.1.5.xpi",
+    "sha256": "16e546760782eb3d1c2f1262e2662d9890ecca374ddbcb674dc594786dcbad64"
+  },
+  "portableTests": {
+    "passed": 70
+  },
+  "environment": {
+    "platform": "macOS",
+    "zoteroVersion": "9.0.6",
+    "pluginVersion": "0.1.5",
+    "profile": "Disposable isolated test profile",
+    "data": "Synthetic test library; normal user profile and data untouched"
+  },
+  "checks": {
+    "macBackspace": true,
+    "forwardDelete": true,
+    "confirmationCancellation": true,
+    "confirmedLibraryTrash": true,
+    "parentAndPDFRecoverable": true,
+    "multipleSelection": true,
+    "collectionMembershipRemoval": true,
+    "commandDeleteCollectionTrash": true,
+    "commandDeleteLibrarySkipsPrompt": true,
+    "readOnlyNativePermission": true,
+    "autorepeatGuard": true,
+    "overlappingCommandGuard": true,
+    "compositionGuard": true,
+    "editableFieldGuard": true,
+    "cardRemovalRefresh": true,
+    "focusAndAnchorRepair": true
+  },
+  "nativeExecution": {
+    "implementation": "ZoteroPane.deleteSelectedItems \u2192 itemsView.deleteSelection",
+    "commandCalls": 7,
+    "confirmationCount": 5,
+    "readOnlyAlertCount": 1,
+    "confirmationHandling": "Only the confirmation service responses were controlled; the native deletion command, permissions, selection, and database operations ran unchanged."
+  },
+  "isolatedCleanExit": {
+    "passed": true,
+    "exitCode": 0,
+    "timestamp": "2026-09-25T05:06:01.651Z"
+  },
+  "limitations": [
+    "Keyboard events were dispatched programmatically to the live grid; no physical keyboard or manual visual interaction was required.",
+    "Confirmation and read-only alert responses were controlled through a temporary Services.prompt facade and restored afterward; native dialog visual appearance was not assessed.",
+    "Runtime verification was performed on macOS with Zotero 9.0.6; cross-platform shortcut behavior is covered by portable tests."
+  ]
+}
