@@ -94,11 +94,27 @@ var LibraryIconView = class {
     view?.onSelect?.addListener(this.onSelect);
   }
 
+  collectionRows(view = this.view) {
+    if (!view) return [];
+    // Zotero 10 removed the singular property. Do not even read it when the
+    // plural API exists; Zotero 9 still supplies one collection row.
+    if ("collectionTreeRows" in view) {
+      let rows = view.collectionTreeRows;
+      return Array.isArray(rows) ? rows : [];
+    }
+    return view.collectionTreeRow ? [view.collectionTreeRow] : [];
+  }
+
+  contextKey(view = this.view) {
+    return JSON.stringify([view?.viewMode || "",
+      this.collectionRows(view).map(row => [row.id, row.ref?.libraryID])]);
+  }
+
   pollView() {
     this.bindView();
     if (!this.view) return;
     let state = [this.view, this.view._rows, this.view._rowMap,
-      this.view.rowCount, this.view.collectionTreeRow?.id];
+      this.view.rowCount, this.contextKey()];
     if (this.pollState && state.every((value, index) => value === this.pollState[index])) return;
     this.pollState = state;
     this.refresh();
@@ -195,7 +211,7 @@ var LibraryIconView = class {
     if (this.dead || !this.enabled) return;
     this.bindView();
     if (!this.view) return;
-    let collection = this.view.collectionTreeRow?.id;
+    let collection = this.contextKey();
     this.pollState = [this.view, this.view._rows, this.view._rowMap, this.view.rowCount, collection];
     let items = LibraryGridModel.topLevel(this.view.getSortedItems().filter(item => item instanceof Zotero.Item));
     let key = collection + ":" + items.map(item => item.id).join(",");
@@ -435,14 +451,19 @@ var LibraryIconView = class {
       return;
     }
     this.endDrag();
-    this.dragSource = { view, row: view.collectionTreeRow };
+    this.dragSource = { view, row: this.collectionRows(view)[0] };
     try {
       let wasSelected = view.getSelectedItems(true).includes(id);
       // DataTransfer is writable only during this synchronous event. Zotero
       // selects an unselected source row and preserves an existing multiselection.
       // It also supplies the item IDs, file flavors and collection drag context
       // required by the tag selector and other native drop targets.
-      view.onDragStart(event, index);
+      let started = view.onDragStart(event, index);
+      this.dragSource.row = Zotero.DragDrop.currentDragSource;
+      if (started === false || event.defaultPrevented) {
+        this.endDrag();
+        return;
+      }
       if (!wasSelected) this.anchor = id;
       this.focusID = id;
       this.syncSelection();
@@ -508,7 +529,9 @@ var LibraryIconView = class {
     // Use physical key codes, as Zotero does, including on non-US keyboards.
     // The native handler owns colored-tag positions, mixed selections, toggling,
     // and 0 (remove colored tags). Keep read-only libraries unchanged.
-    if (this.view.collectionTreeRow?.editable === false || this.view.handleKeyDown(event) === false) {
+    let readOnly = this.collectionRows().some(row => row.editable === false)
+      || this.view.getSelectedItems().some(item => item?.isEditable?.() === false);
+    if (readOnly || this.view.handleKeyDown(event) === false) {
       event.preventDefault(); event.stopPropagation();
       return true;
     }
@@ -535,13 +558,16 @@ var LibraryIconView = class {
   async deleteSelection(force) {
     this.deleting = true;
     let view = this.view;
-    let row = view.collectionTreeRow;
+    let rows = [...this.collectionRows(view)];
+    let context = this.contextKey(view);
     try {
       // Keep native permissions, confirmation dialogs, cancellation, collection
       // removal, Trash, and permanent deletion in Zotero's own command.
       await this.window.ZoteroPane.deleteSelectedItems(force);
-      if (this.dead || !this.enabled || this.view !== view
-        || this.window.ZoteroPane.itemsView !== view || view.collectionTreeRow !== row) return;
+      if (this.dead || !this.enabled || this.view !== view || this.window.ZoteroPane.itemsView !== view) return;
+      let currentRows = this.collectionRows(view);
+      if (this.contextKey(view) !== context || rows.length !== currentRows.length
+        || rows.some((row, index) => row !== currentRows[index])) return;
       this.refresh();
       if (!this.items.some(item => item.id === this.focusID)) {
         let visible = new Set(this.items.map(item => item.id));

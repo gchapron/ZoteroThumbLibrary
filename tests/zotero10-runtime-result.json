@@ -1,0 +1,336 @@
+{
+  "passed": true,
+  "testedAt": "2026-09-25T05:25:34.337Z",
+  "zoteroVersion": "10.0.4",
+  "platform": "macOS",
+  "method": "Installed release XPI into the guarded disposable profile, exercised real Zotero UI handlers and synthetic database fixtures, then cleanly restarted Zotero. The normal profile and library were not modified.",
+  "profile": "/Users/guillaume/Documents/Codex/2026-09-24/i-wou/work/test-profile",
+  "data": "/Users/guillaume/Documents/Codex/2026-09-24/i-wou/work/test-data",
+  "zotero9Note": "No Zotero 9 runtime rerun in this update: the installed app is now 10.0.4. Earlier 9.0.6 results remain historical evidence, and portable tests cover both context interfaces.",
+  "package": {
+    "filename": "ZoteroThumbLibrary-0.1.6.xpi",
+    "sha256": "4cfa3ee0d7c966a97524c90022940f76a28256c7bd6da3b63952636b0a779f34",
+    "version": "0.1.6"
+  },
+  "checks": {
+    "nativeTagsAndDragDrop": {
+      "passed": true,
+      "nativeColoredTagNumbers": true,
+      "physicalDigitCode": true,
+      "numpad": true,
+      "toggleOff": true,
+      "mixedSelectionRemovesAll": true,
+      "zeroClearsColors": true,
+      "modifierGuard": true,
+      "selectionRetained": true,
+      "nativeTagDrop": true,
+      "dropItemCount": 2,
+      "commandDropRemoves": true,
+      "unselectedDragSelectsSource": true,
+      "selectionAnchorRetained": true,
+      "shiftAnchorFollowsNewDrag": true,
+      "nativeDragSource": true,
+      "readOnlyGroupGuard": true
+    },
+    "multipleCollectionAndLibraryContexts": {
+      "passed": true,
+      "zoteroVersion": "10.0.4",
+      "pluginVersion": "0.1.6",
+      "multiCollectionUnion": true,
+      "sameLibraryColoredKeys": true,
+      "nativeMultiCollectionDrag": true,
+      "multiLibraryUnion": true,
+      "headerRowsExcluded": true,
+      "crossLibrarySelection": true,
+      "multiLibraryColoredKeysDisabled": true,
+      "mixedReadonlyTagsUnchanged": true,
+      "contextSwitchRefresh": true,
+      "rows": [
+        {
+          "id": "L1",
+          "editable": true,
+          "libraryID": 1
+        },
+        {
+          "id": "L2",
+          "editable": false,
+          "libraryID": 2
+        }
+      ]
+    },
+    "nativeDelete": {
+      "passed": true,
+      "zoteroVersion": "10.0.4",
+      "pluginVersion": "0.1.6",
+      "platform": "macOS",
+      "profile": "/Users/guillaume/Documents/Codex/2026-09-24/i-wou/work/test-profile",
+      "data": "/Users/guillaume/Documents/Codex/2026-09-24/i-wou/work/test-data",
+      "checks": {
+        "macBackspace": true,
+        "forwardDelete": true,
+        "confirmationCancellation": true,
+        "confirmedLibraryTrash": true,
+        "parentAndPDFRecoverable": true,
+        "multipleSelection": true,
+        "collectionMembershipRemoval": true,
+        "commandDeleteCollectionTrash": true,
+        "commandDeleteLibrarySkipsPrompt": true,
+        "readOnlyNativePermission": true,
+        "autorepeatGuard": true,
+        "overlappingCommandGuard": true,
+        "compositionGuard": true,
+        "editableFieldGuard": true,
+        "cardRemovalRefresh": true,
+        "focusAndAnchorRepair": true
+      },
+      "nativeDeleteCalls": 7,
+      "confirmationCount": 5,
+      "readOnlyAlertCount": 1,
+      "nativeImplementation": "ZoteroPane.deleteSelectedItems \u2192 itemsView.deleteSelection",
+      "confirmationHandling": "Only the confirmation service responses were controlled; the native deletion command, permissions, selection, and database operations ran unchanged.",
+      "fixtureItemIDs": [
+        251,
+        252,
+        253,
+        254,
+        255,
+        256
+      ],
+      "fixtureAttachmentID": 257
+    },
+    "filtersSelectionLifecycle": {
+      "passed": true,
+      "version": "0.1.6",
+      "collectionFilter": true,
+      "nativeSelection": true,
+      "multipleSelection": true,
+      "childDeduplication": true,
+      "missingFilePlaceholder": true,
+      "quickSearch": true,
+      "emptyState": true,
+      "listToggle": true,
+      "disableCleanup": true,
+      "reEnable": true,
+      "visibleImage": {
+        "width": 360,
+        "height": 467
+      }
+    },
+    "nativeMultiContextDelete": {
+      "passed": true,
+      "zoteroVersion": "10.0.4",
+      "pluginVersion": "0.1.6",
+      "multiCollectionDeleteRemovesBothMemberships": true,
+      "itemRetainedInLibrary": true,
+      "mixedReadOnlyNativeDeleteRejected": true,
+      "nativeCalls": 2,
+      "confirmationCount": 1,
+      "readOnlyAlertCount": 1,
+      "fixtureItemID": 260,
+      "readOnlySelectionDetail": "Two library roots selected, with the read-only group root focused, matching the native permission check."
+    },
+    "nativeUndoRedo": {
+      "passed": true,
+      "zoteroVersion": "10.0.4",
+      "pluginVersion": "0.1.6",
+      "coloredTagUndo": true,
+      "coloredTagRedo": true,
+      "trashUndo": true,
+      "restoredThumbnail": true,
+      "tagAction": "undo-action-add-tag",
+      "trashAction": "undo-action-trash",
+      "fixtureItemID": 261
+    },
+    "renderCacheZoomLifecycle": {
+      "passed": true,
+      "zoteroVersion": "10.0.4",
+      "result": {
+        "z10-library-revision": {
+          "epub": [
+            {
+              "fixture": "epub3-cover",
+              "width": 300,
+              "height": 450,
+              "topPixel": [
+                25,
+                110,
+                170,
+                255
+              ],
+              "bottomPixel": [
+                240,
+                180,
+                55,
+                255
+              ]
+            },
+            {
+              "fixture": "epub2-cover",
+              "width": 300,
+              "height": 450,
+              "topPixel": [
+                25,
+                110,
+                170,
+                255
+              ],
+              "bottomPixel": [
+                240,
+                180,
+                55,
+                255
+              ]
+            },
+            {
+              "fixture": "guide-cover",
+              "width": 300,
+              "height": 450,
+              "topPixel": [
+                25,
+                110,
+                170,
+                255
+              ],
+              "bottomPixel": [
+                240,
+                180,
+                55,
+                255
+              ]
+            },
+            {
+              "fixture": "svg-wrapper-cover",
+              "width": 300,
+              "height": 450,
+              "topPixel": [
+                25,
+                110,
+                170,
+                255
+              ],
+              "bottomPixel": [
+                240,
+                180,
+                55,
+                255
+              ]
+            },
+            {
+              "fixture": "without-cover",
+              "placeholder": true
+            }
+          ],
+          "pdf": {
+            "defaultRenderer": "PDF.js",
+            "nativeAdapterPresent": false,
+            "width": 360,
+            "height": 466,
+            "totalMS": 75
+          },
+          "toolbar": {
+            "stylesheetVersion": "0.1.6",
+            "buttonWidth": 24,
+            "buttonHeight": 24,
+            "iconOnly": true,
+            "headerHeight": 32,
+            "accessible": true,
+            "labels": [
+              "Switch to list view",
+              "Switch to icon view"
+            ]
+          },
+          "epubPersistentCache": true,
+          "passed": true
+        },
+        "check-grid-drag-cleanup": {
+          "passed": true,
+          "version": "0.1.6",
+          "cardDraggable": true,
+          "previewImageDraggable": false,
+          "dragEndCleanup": true,
+          "disableDuringDragCleanup": true,
+          "reEnable": true
+        },
+        "check-library-disk-cache": {
+          "performance": {
+            "items": 96,
+            "coldMS": 4851,
+            "warmMS": 40,
+            "coldRenders": 96,
+            "warmRenders": 0,
+            "warmRendererCreated": false
+          },
+          "sourceChangeMiss": true,
+          "corruptCacheRegenerated": true,
+          "diskCache": {
+            "files": 225,
+            "bytes": 2741900,
+            "entryLimit": 1000,
+            "byteLimit": 134217728
+          },
+          "passed": true
+        },
+        "check-library-zoom-continuity": {
+          "passed": true,
+          "frames": 24,
+          "maxAnchorShiftPixels": 0,
+          "existingImageRetained": true,
+          "metadataEditRenders": 0,
+          "mountedCards": 21,
+          "detachedCards": 29
+        }
+      }
+    },
+    "coldRestart": {
+      "name": "ZoteroThumbLibrary",
+      "version": "0.1.6",
+      "isActive": true,
+      "imageWidth": 360,
+      "imageHeight": 466,
+      "persistentCache": {
+        "path": "cache/zoteroThumbLibrary/v1",
+        "images": 96,
+        "renders": 0,
+        "totalMS": 43,
+        "rendererCreated": false
+      }
+    },
+    "quickLookIntegration": {
+      "runtimeExercised": false,
+      "reason": "The disposable profile contains Zotero7QuickLook 1.0.8, whose own compatibility limit excludes Zotero 10. Zotero correctly disabled that separate plugin; its manifest was not modified. ZoteroThumbLibrary forwarding retains portable unit coverage."
+    },
+    "environment": {
+      "zoteroVersion": "10.0.4",
+      "profile": "/Users/guillaume/Documents/Codex/2026-09-24/i-wou/work/test-profile",
+      "data": "/Users/guillaume/Documents/Codex/2026-09-24/i-wou/work/test-data",
+      "addons": [
+        {
+          "name": "Zotero7QuickLook",
+          "version": "1.0.8",
+          "id": "quicklook@zotero-plugin.org",
+          "isActive": false,
+          "appDisabled": true,
+          "isCompatible": false
+        },
+        {
+          "name": "ZoteroThumbFile",
+          "version": "1.1.5",
+          "id": "pdf-page-thumbnails@zotero-visual-plugins.local",
+          "isActive": true,
+          "appDisabled": false,
+          "isCompatible": true
+        },
+        {
+          "name": "ZoteroThumbLibrary",
+          "version": "0.1.6",
+          "id": "library-icon-view@local.zotero.plugins",
+          "isActive": true,
+          "appDisabled": false,
+          "isCompatible": true
+        }
+      ],
+      "libraryPluralContext": true,
+      "libraryLegacyContextAbsent": true
+    }
+  }
+}
