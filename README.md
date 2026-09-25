@@ -2,6 +2,8 @@
 
 A macOS Zotero plugin that replaces the library table with a scrollable grid of first-page PDF thumbnails, EPUB covers, and local image previews. Use the compact view button in the library toolbar to switch between the grid and list.
 
+![ZoteroThumbLibrary displaying a grid of PDF thumbnails with the selected item's metadata in the sidebar](docs/images/ZoteroThumbLibrary.png)
+
 ## Install
 
 Built for **Zotero 9.0.x and 10.0.x**. Version 0.1.9 was tested inside **Zotero 10.0.4 on macOS**, using an isolated profile and synthetic files. Earlier releases were tested inside Zotero 9.0.6; the Zotero 9 collection interface remains supported by a compatibility adapter and portable tests.
